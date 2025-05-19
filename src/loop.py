@@ -6,7 +6,6 @@ from .editor import Editor
 from .function_executor import FunctionExecutor
 from .utils import read_file, write_file, log_change, log_self_review
 
-DEPLOYMENT_PLAN = os.path.join(os.path.dirname(__file__), 'deployment_plan.md')
 PLAN = os.path.join(os.path.dirname(__file__), 'plan.md')
 TASKS = os.path.join(os.path.dirname(__file__), 'tasks.md')
 CRON = os.path.join(os.path.dirname(__file__), 'cron.md')
@@ -35,30 +34,32 @@ class LifeAssistantLoop:
 
     def run(self):
         while True:
-            # 1. Read deployment plan
-            deployment_plan = read_file(DEPLOYMENT_PLAN)
-            # 2. Read plan, tasks, cron
+            # Reload memory at each loop
+            self.memory = self.load_memory()
+            # 1. Read plan, tasks, cron
             plan = read_file(PLAN)
             tasks = read_file(TASKS)
             cron = read_file(CRON)
-            # 3. Check for human input
+            # 2. Check for human input
             human_input = read_file(HUMAN_INPUT)
-            # 4. Reason and decide next actions
+            # 3. Reason and decide next actions
+            prompt = self.thinker.build_prompt('', plan, tasks, cron, human_input, self.memory)
+            print("\n-------------- PROMPT --------------\n" + prompt)
             thoughts, actions = self.thinker.reason(
-                deployment_plan, plan, tasks, cron, human_input, self.memory
+                '', plan, tasks, cron, human_input, self.memory
             )
-            # --- Show model output to user ---
-            print("\n===== MODEL THOUGHTS =====\n" + thoughts)
+            print("\n-------------- ANSWER --------------\n")
+            print("===== MODEL THOUGHTS =====\n" + thoughts)
             print("\n===== MODEL ACTIONS =====\n" + json.dumps(actions, indent=2))
-            # 5. Execute actions
+            # 4. Execute actions
             for action in actions:
                 result = self.executor.execute(action, self.editor, self.memory)
                 log_change(CHANGE_LOG, action, result)
-            # 6. Save memory
+            # 5. Save memory
             self.save_memory()
-            # 7. Self-reflection
+            # 6. Self-reflection
             log_self_review(SELF_REVIEW, thoughts)
-            # 8. Wait or break if paused
+            # 7. Wait or break if paused
             if 'pause' in (human_input or '').lower():
                 break
             time.sleep(5)

@@ -12,7 +12,7 @@ To create an autonomous agent that continuously assists the user in achieving th
 - **utils.py**: Helper utilities for file I/O and formatting.
 
 ## Key Files
-- `plan.md`: This plan and project structure.
+
 - `tasks.md`: List of current tasks.
 - `cron.md`: Scheduled routines.
 - `human_input.md`: Human overrides and redirections.
@@ -26,3 +26,6 @@ To create an autonomous agent that continuously assists the user in achieving th
 - Human can override or redirect at any time.
 - All changes and reflections are logged.
 - Agent can improve its own logic and plans.
+
+---
+*Note: Tasks have not yet been filled in `tasks.md`.*
