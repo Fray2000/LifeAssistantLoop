@@ -1,0 +1,12 @@
+{
+  "id": "34e6c36c-0503-449a-a88c-7f5f879857b8",
+  "type": "command",
+  "content": {
+    "userIntroduction": {
+      "name": "Francesco",
+      "age": 24
+    }
+  },
+  "timestamp": "2025-06-03T15:10:53.568443",
+  "response_required": true
+}

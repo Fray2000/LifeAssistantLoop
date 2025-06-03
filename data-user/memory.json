@@ -1,0 +1,58 @@
+{
+  "personal": {
+    "height": null,
+    "full_name": null,
+    "friends": [],
+    "birthdate": null,
+    "age": 24,
+    "gender": null,
+    "weight": null,
+    "health_conditions": [],
+    "medications": [],
+    "emergency_contacts": [],
+    "address": null,
+    "contracts": [],
+    "insurance": {},
+    "doctors": [],
+    "family": [],
+    "pets": [],
+    "hobbies": [],
+    "name": "Francesco"
+  },
+  "tasks": {
+    "completed": [],
+    "in_progress": [],
+    "priorities": []
+  },
+  "knowledge": {
+    "learned_patterns": {},
+    "user_preferences": {},
+    "important_dates": {},
+    "subscriptions": [],
+    "important_documents": [],
+    "goals": [],
+    "travel_history": [],
+    "vehicles": []
+  },
+  "notes": [],
+  "system": {
+    "version": "2.0.0",
+    "last_startup": "2025-06-03T14:39:55.092608",
+    "cycles_completed": 2,
+    "features_implemented": [
+      "split-memory"
+    ],
+    "backend_last_startup": "2025-06-03T15:09:45.673304",
+    "frontend_last_startup": null
+  },
+  "self_improvement": {
+    "proposed_enhancements": [],
+    "successful_changes": [],
+    "failed_attempts": []
+  },
+  "internal_state": {
+    "last_processed_request_id": "34e6c36c-0503-449a-a88c-7f5f879857b8",
+    "last_request_time": "2025-06-03T15:10:53.867753"
+  },
+  "technical_knowledge": {}
+}

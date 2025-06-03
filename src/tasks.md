@@ -1,4 +1,3 @@
 # Tasks
 
-- [ ] Create a healthy weekly menue and memories it
-
+- [ ] Meeting with Nahuel at 10am today

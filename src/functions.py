@@ -1,5 +1,4 @@
 import datetime
-import requests
 import os
 from .utils import read_file, write_file
 

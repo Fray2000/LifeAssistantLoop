@@ -1,6 +1,8 @@
 import os
 from .utils import read_file, write_file
 
+DEFAULT_TASKS_FILE = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'data-backend', 'tasks.md')
+
 class Editor:
     def __init__(self):
         pass
@@ -24,8 +26,10 @@ class Editor:
             new_content = content
         write_file(file_path, new_content)
         
-    def add_task(self, file_path, task):
+    def add_task(self, file_path=None, task=None):
         """Add a task to the tasks file"""
+        if file_path is None:
+            file_path = DEFAULT_TASKS_FILE
         tasks = self.read_markdown(file_path)
         if not tasks.strip():
             tasks = "# Tasks\n\n"
@@ -39,8 +43,10 @@ class Editor:
             tasks += f"- [ ] {task}\n"
             write_file(file_path, tasks)
             
-    def complete_task(self, file_path, task):
+    def complete_task(self, file_path=None, task=None):
         """Mark a task as completed"""
+        if file_path is None:
+            file_path = DEFAULT_TASKS_FILE
         tasks = self.read_markdown(file_path)
         if f"- [ ] {task}" in tasks:
             tasks = tasks.replace(f"- [ ] {task}", f"- [x] {task}")
