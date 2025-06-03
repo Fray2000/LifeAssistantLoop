@@ -4,7 +4,7 @@ from .utils import read_file, write_file
 
 #OLLAMA_URL = 'http://umbrel.local:11434/api/generate'
 OLLAMA_URL = 'http://localhost:11434/api/generate'
-MODEL = 'tinyllama'
+MODEL = 'llama3.2'
 
 class Thinker:
     def __init__(self):

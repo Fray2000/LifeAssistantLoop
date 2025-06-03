@@ -13,10 +13,10 @@ sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from src.thinker import Thinker
 from src.editor import Editor
 from src.function_executor import FunctionExecutor
-from src.utils import read_file, write_file, log_change, log_self_review
+from src.utils import read_file, write_file, log_change, log_self_review, log_perception_action
 
 # Path definitions
-BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 SRC_DIR = os.path.join(BASE_DIR, 'src')
 DATA_DIR = os.path.join(BASE_DIR, 'data')
 LOGS_DIR = os.path.join(BASE_DIR, 'logs')
@@ -28,6 +28,7 @@ HUMAN_INPUT = os.path.join(SRC_DIR, 'human_input.md')
 MEMORY = os.path.join(DATA_DIR, 'memory.json')
 CHANGE_LOG = os.path.join(LOGS_DIR, 'change_log.md')
 SELF_REVIEW = os.path.join(LOGS_DIR, 'self_review.md')
+PERCEPTION_ACTION_LOG = os.path.join(LOGS_DIR, 'perception_action.log')
 
 class LifeAssistantLoop:
     def __init__(self):
@@ -60,10 +61,22 @@ class LifeAssistantLoop:
     def run(self):
         print("Starting Life Assistant main loop...")
         while True:
-            try:
+            try:                
+                cycle_num = self.memory.get('system', {}).get('cycles_completed', 0) + 1
                 print("\n" + "="*50)
-                print(f"CYCLE {self.memory.get('system', {}).get('cycles_completed', 0) + 1}")
+                print(f"🔄 CYCLE {cycle_num} 🔄")
                 print("="*50)
+                
+                # Print a clear visualization of the cycle phases
+                print("\n📋 CYCLE PHASES:")
+                print("1. 📚 Reading inputs (plan, tasks, cron)")
+                print("2. 👤 Checking for human input")
+                print("3. 🧠 Reasoning about next actions")
+                print("4. 🤖 Executing actions")
+                print("5. 💾 Updating memory")
+                print("6. 🔍 Self-reflection")
+                print("7. ⏱️ Wait for next cycle")
+                print("\n")
                 
                 # Reload memory at each loop
                 self.memory = self.load_memory()
@@ -79,16 +92,27 @@ class LifeAssistantLoop:
                     print(f"Human input detected: {human_input[:100]}...")
                     # Update last human interaction time
                     self.memory.setdefault('system', {})['last_human_interaction'] = datetime.datetime.now().isoformat()
-                
-                # 3. Reason and decide next actions
+                  # 3. Reason and decide next actions
                 print("Thinking about next actions...")
                 prompt = self.thinker.build_prompt('', plan, tasks, cron, human_input, self.memory)
                 print("\n-------------- PROMPT --------------\n" + prompt)
+                
+                # Create perception data dictionary for logging
+                perception_data = {
+                    "plan": plan,
+                    "tasks": tasks,
+                    "cron": cron,
+                    "human_input": human_input,
+                    "memory": self.memory
+                }
                 
                 try:
                     thoughts, actions = self.thinker.reason(
                         '', plan, tasks, cron, human_input, self.memory
                     )
+                    
+                    # Log perception and planned actions
+                    log_perception_action(PERCEPTION_ACTION_LOG, perception_data, actions)
                 except Exception as e:
                     print(f"Error during reasoning: {e}")
                     thoughts = f"Error occurred: {e}"
@@ -97,18 +121,41 @@ class LifeAssistantLoop:
                 print("\n-------------- ANSWER --------------\n")
                 print("===== MODEL THOUGHTS =====\n" + thoughts)
                 print("\n===== MODEL ACTIONS =====\n" + json.dumps(actions, indent=2))
+                  # 4. Execute actions
+                print("\n" + "="*30)
+                print("🤖 EXECUTING MODEL ACTIONS")
+                print("="*30)
+                executed_actions = []
                 
-                # 4. Execute actions
                 for i, action in enumerate(actions):
                     try:
-                        print(f"Executing action {i+1}/{len(actions)}: {action.get('type')}")
+                        print(f"\n🔶 Executing action {i+1}/{len(actions)}: {action.get('type')}")
                         result = self.executor.execute(action, self.editor, self.memory)
                         log_change(CHANGE_LOG, action, result)
-                        print(f"Result: {result}")
+                        print(f"✅ Result: {result}")
+                        
+                        # Add to executed actions for logging
+                        executed_actions.append({
+                            "type": action.get("type"),
+                            "args": action.get("args", {}),
+                            "result": result,
+                            "success": True
+                        })
                     except Exception as e:
                         error_msg = f"Error executing action {action.get('type')}: {e}"
-                        print(error_msg)
+                        print(f"❌ {error_msg}")
                         log_change(CHANGE_LOG, action, error_msg)
+                        
+                        # Add failed action to executed actions
+                        executed_actions.append({
+                            "type": action.get("type"),
+                            "args": action.get("args", {}),
+                            "error": str(e),
+                            "success": False
+                        })
+                
+                # Log the executed actions
+                log_perception_action(PERCEPTION_ACTION_LOG, {"executed_actions": True}, executed_actions)
 
                 # 5. Update cycle count in memory
                 self.memory.setdefault('system', {})['cycles_completed'] = self.memory.get('system', {}).get('cycles_completed', 0) + 1
@@ -133,10 +180,13 @@ class LifeAssistantLoop:
                 print("\nKeyboard interrupt detected. Exiting gracefully.")
                 break
             except Exception as e:
-                print(f"Unexpected error in main loop: {e}")
-                # Log the error but continue with the next cycle
-                with open(os.path.join(LOGS_DIR, 'errors.log'), 'a') as f:
-                    f.write(f"[{datetime.datetime.now().isoformat()}] Error: {str(e)}\n")
+                print(f"Unexpected error in main loop: {e}")                # Log the error but continue with the next cycle
+                try:
+                    os.makedirs(LOGS_DIR, exist_ok=True)
+                    with open(os.path.join(LOGS_DIR, 'errors.log'), 'a') as f:
+                        f.write(f"[{datetime.datetime.now().isoformat()}] Error: {str(e)}\n")
+                except Exception as log_error:
+                    print(f"Failed to log error: {log_error}")
                 time.sleep(5)  # Wait before retrying
         
         print("Life Assistant loop ended. Saving final state...")
