@@ -32,3 +32,4 @@
 [2025-06-04T10:05:32.926626] Action: {'type': 'retrieve_data', 'args': {'data_type': 'memory', 'section': 'personal.calendat'}}, Result: {'type': 'error', 'message': 'Path personal.calendat not found in memory'}
 [2025-06-04T10:05:32.931566] Action: {'type': 'append_to_list', 'args': {'key': 'personal.calendat', 'value': '{"date": "next Monday", "time": "10 AM"}'}}, Result: Appended {"date": "next Monday", "time": "10 AM"} to personal.calendat
 [2025-06-04T10:05:32.932935] Action: {'type': 'retrieve_data', 'args': {'data_type': 'memory', 'section': 'personal.calendat', 'optional_context': {'with_family': False}}}, Result: {'type': 'memory_data', 'path': 'personal.calendat', 'data': ['{"date": "next Monday", "time": "10 AM"}']}
+[2025-06-04T10:20:57.907401] Action: {'type': 'retrieve_data', 'args': {'data_type': 'memory', 'section': 'calendar'}}, Result: {'type': 'error', 'message': "Section 'calendar' not found in memory"}

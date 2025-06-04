@@ -1,47 +1,7 @@
 {
-  "id": "a5bef40a-77c8-4bcf-8168-edb4aeea4357",
+  "id": "2cd852ab-0a58-4f4d-94ba-f14fe3b022d1",
   "status": "success",
-  "content": "Generated 3 actions to fulfill your request.",
-  "actions": [
-    {
-      "type": "retrieve_data",
-      "args": {
-        "data_type": "memory",
-        "section": "personal.calendat"
-      },
-      "result": {
-        "type": "error",
-        "message": "Path personal.calendat not found in memory"
-      },
-      "success": true
-    },
-    {
-      "type": "append_to_list",
-      "args": {
-        "key": "personal.calendat",
-        "value": "{\"date\": \"next Monday\", \"time\": \"10 AM\"}"
-      },
-      "result": "Appended {\"date\": \"next Monday\", \"time\": \"10 AM\"} to personal.calendat",
-      "success": true
-    },
-    {
-      "type": "retrieve_data",
-      "args": {
-        "data_type": "memory",
-        "section": "personal.calendat",
-        "optional_context": {
-          "with_family": false
-        }
-      },
-      "result": {
-        "type": "memory_data",
-        "path": "personal.calendat",
-        "data": [
-          "{\"date\": \"next Monday\", \"time\": \"10 AM\"}"
-        ]
-      },
-      "success": true
-    }
-  ],
-  "timestamp": "2025-06-04T10:05:32.933215"
+  "content": "I understood your request but couldn't determine specific actions to take.",
+  "actions": [],
+  "timestamp": "2025-06-04T13:09:42.668353"
 }

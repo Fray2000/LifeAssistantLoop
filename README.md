@@ -2,15 +2,20 @@
 
 A sophisticated personal assistant system leveraging a dual-model architecture with:
 - Llama3.2 for frontend user interaction
-- Llama3.2 for backend task execution
+- Deepseek Coder R1 for backend task execution
 - Bidirectional communication between components
+- Comprehensive memory management for user data
+- Multi-cycle task sequencing for complex operations
 
 ## Key Features
 
 - **Dual-Model Architecture**: Separates user interaction and task execution into independent components
 - **Continuous Backend Loop**: The backend runs continuously to process tasks from the frontend
 - **Bidirectional Communication**: Frontend and backend communicate through JSON message exchange
-- **Memory Management**: Persistent memory shared between frontend and backend
+- **Comprehensive Memory Management**: Detailed hierarchical memory structure for storing user information
+- **Multi-Cycle Task Execution**: Supports complex multi-step operations across multiple interaction cycles
+- **Dedicated Monitoring Windows**: Two separate windows for internal reasoning and task hierarchy visualization
+- **User-Friendly Confirmations**: Clean, formatted notifications when memory is updated
 - **Debug Mode**: Shows internal model interactions for transparency
 
 ## How It Works
@@ -44,24 +49,59 @@ The system uses a dual-model architecture with split memory:
 ### Memory Flow
 
 ```
-┌───────────────────┐     ┌────────────────┐
-│   User Interface  │     │  Task Buffer   │
-│  (frontend.py)    │◄───►│ (JSON)         │◄─────┐
-└───────────────┬───┘     └────────────────┘      │
-                │                                 │
-                ▼                                 ▼
+┌───────────────────┐     ┌────────────────┐     ┌───────────────────┐
+│   User Interface  │     │  Task Buffer   │     │ Internal Thoughts |
+│  (frontend.py)    │◄───►│ (JSON)         │◄────┤ (internal_window) |
+└───────────────┬───┘     └────────────────┘     └───────────────────┘
+                │                                          ▲
+                ▼                                          │
 ┌───────────────────┐     ┌────────────────┐     ┌───────────────────┐
 │  User Memory      │     │ Communication  │     │  Backend Memory   │
 │  (data-user/)     │     │ Files (src/)   │     │  (data-backend/)  │
 └───────────────────┘     └────────────────┘     └───────────────────┘
 ```
 
+## New Features
+
+### Comprehensive Memory Structure
+
+The memory system now uses a hierarchical structure with categories for better organization:
+
+- **Personal Info**: User profile, contact information, and preferences  
+- **Health & Wellness**: Medical conditions, medications, doctors, fitness data
+- **Calendar & Events**: Events, reminders, availability
+- **Finance & Banking**: Accounts, transactions, budgets, bills
+- **Social & Relationships**: Contacts, family, friend groups
+- **Work & Projects**: Current job, projects, tasks, goals
+- **Knowledge & Learning**: Skills, education, courses, travel data
+- **Devices & Smart Home**: Devices, routines
+- **System State**: Interaction timestamp, active mode, focus
+- **Assistant Memory**: Conversation history, learned patterns, feedback
+
+### Multi-Cycle Tasks
+
+For complex operations that need multiple steps:
+
+1. **Task Sequences**: Backend creates sequences of tasks that run across interactions
+2. **State Tracking**: Automatically tracks progress and moves to next step
+3. **Visual Progress**: Internal window shows task progress with visual indicators
+4. **Sequence Management**: Completed sequences are archived for reference
+
+### Internal Thoughts Window
+
+A separate window showing the backend's internal processing:
+
+1. **Real-time Updates**: See reasoning and actions as they happen
+2. **Color-coded Categories**: Different colors for different types of operations
+3. **Task Sequence Status**: Visual representation of multi-cycle task progress
+4. **Active Monitoring**: Auto-refreshes to show latest activity
+
 ## Getting Started
 
 ### Prerequisites
 
 - Python 3.8 or higher
-- Ollama installed and running with Llama3.2 model available
+- Ollama installed and running with Llama3.2 and deepseek-coder:latest models available
 
 ### Installation
 

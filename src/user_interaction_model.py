@@ -221,6 +221,7 @@ class UserInteractionModel:
     def build_output_prompt(self, execution_results, user_memory, full_response=None):
         """
         Build a prompt for generating a user-friendly response
+        Adds confirmations for memory/backend updates and ensures clear formatting.
         
         Args:
             execution_results: Results of task execution
@@ -246,6 +247,7 @@ When displaying information retrieved from memory:
 
 If there were any issues or errors, explain them simply and suggest alternatives.
 Be conversational and engaging, but stay focused on the user's original request.
+Also, if any actions updated user memory, backend memory, or similar, provide a short confirmation (e.g., 'Your birthday preferences have been updated.').
 """
 
         # Format conversation history
@@ -268,7 +270,26 @@ Be conversational and engaging, but stay focused on the user's original request.
                         history += f"Assistant: {entry['content']}\n"
                     else:
                         history += f"Assistant: {entry['content']}\n"
-        
+
+        # Gather confirmations for memory/backend updates
+        confirmations = []
+        if full_response and isinstance(full_response, dict):
+            for action in full_response.get('actions', []):
+                t = action.get('type', '')
+                args = action.get('args', {})
+                if t in ("update_memory", "append_to_list", "remove_from_list", "update_nested"):
+                    key = args.get('key', '')
+                    if t == "update_memory":
+                        confirmations.append(f"The information '{key}' has been updated.")
+                    elif t == "append_to_list":
+                        confirmations.append(f"Added '{args.get('value','')}' to {key}.")
+                    elif t == "remove_from_list":
+                        confirmations.append(f"Removed '{args.get('value','')}' from {key}.")
+                    elif t == "update_nested":
+                        confirmations.append(f"Updated '{key}' to '{args.get('value','')}'.")
+                elif t == "update_backend_memory":
+                    confirmations.append("Backend memory has been updated.")
+
         # Get retrieved data from response if available
         retrieved_data = ""
         if full_response and isinstance(full_response, dict):
@@ -276,28 +297,31 @@ Be conversational and engaging, but stay focused on the user's original request.
                 if action.get('type') == 'retrieve_data' and 'result' in action:
                     result = action.get('result', {})
                     if isinstance(result, dict):
-                        # Check if we have formatted data first
+                        
                         if 'formatted_data' in result:
                             retrieved_data += f"Retrieved data (formatted): {result['formatted_data']}\n"
                         elif 'data' in result:
                             retrieved_data += f"Retrieved data: {result['data']}\n"
-        
+
         # Assemble the complete prompt
         complete_prompt = f"{system_prompt}\n\n"
-        
+
         if history:
             complete_prompt += f"Conversation Context:\n{history}\n\n"
-            
+
         complete_prompt += f"Original User Request: {original_request}\n\n"
-        
+
+        if confirmations:
+            complete_prompt += f"System Confirmations:\n" + "\n".join(confirmations) + "\n\n"
         if retrieved_data:
             complete_prompt += f"Retrieved Information:\n{retrieved_data}\n\n"
-            
+
         if execution_results:
             complete_prompt += f"Execution Results: {execution_results}\n\n"
+
         else:
             complete_prompt += "No specific execution results to report.\n\n"
-            
+
         complete_prompt += "Your friendly response to the user:"
         
         return complete_prompt

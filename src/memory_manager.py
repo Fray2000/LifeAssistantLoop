@@ -16,7 +16,6 @@ class MemoryManager:
         self.user_memory = {}
         self.system_memory = {}
         self.backend_memory = {}
-        
         self.load_memory()
         
     def load_memory(self):
@@ -24,44 +23,37 @@ class MemoryManager:
         Load memory from files and split into user, system, and backend parts
         """
         try:
-            # Load user-facing memory
+            # Load user-facing memory with new comprehensive structure
             if os.path.exists(self.memory_path):
                 with open(self.memory_path, 'r') as f:
                     user_memory_data = json.load(f)
                     
-                # Extract user-facing memory
-                self.user_memory = {
-                    "personal": user_memory_data.get("personal", {}),
-                    "tasks": user_memory_data.get("tasks", {
-                        "completed": [],
-                        "in_progress": [],
-                        "priorities": []
-                    }),
-                    "knowledge": user_memory_data.get("knowledge", {
-                        "learned_patterns": {},
-                        "user_preferences": {},
-                        "important_dates": {}
-                    }),
-                    "notes": user_memory_data.get("notes", []),
-                    "last_interaction": user_memory_data.get("system", {}).get("last_human_interaction", None)
-                }
+                # Use the new comprehensive memory structure directly
+                self.user_memory = user_memory_data
                 
-                # Extract common system memory (shared between frontend and backend)
+                # Extract system memory from the system_state section
                 self.system_memory = {
-                    "system": user_memory_data.get("system", {
-                        "version": "2.0.0",  # Updated for split memory architecture
-                        "last_startup": datetime.datetime.now().isoformat(),
-                        "cycles_completed": 0,
-                        "features_implemented": ["split-memory"]
+                    "system_state": user_memory_data.get("system_state", {
+                        "last_interaction_timestamp": datetime.datetime.now().isoformat(),
+                        "active_mode": "assistant",
+                        "current_focus": "general_assistance",
+                        "system_version": "3.0.0"
                     }),
-                    "self_improvement": user_memory_data.get("self_improvement", {
-                        "proposed_enhancements": [],
-                        "successful_changes": [],
-                        "failed_attempts": []
+                    "assistant_memory": user_memory_data.get("assistant_memory", {
+                        "conversation_history": [],
+                        "learned_patterns": {},
+                        "user_feedback": []
                     }),
-                    "internal_state": user_memory_data.get("internal_state", {}),
-                    "technical_knowledge": user_memory_data.get("technical_knowledge", {})
+                    "multi_cycle_tasks": {
+                        "active_sequences": {},
+                        "completed_sequences": {},
+                        "current_sequence_id": None
+                    }
                 }
+            else:
+                # Initialize with new comprehensive structure
+                self.user_memory = self._get_default_user_memory()
+                self.system_memory = self._get_default_system_memory()
             
             # Load backend-specific memory if applicable
             if self.is_backend and self.backend_memory_path and os.path.exists(self.backend_memory_path):
@@ -78,75 +70,163 @@ class MemoryManager:
                         "execution_count": 0,
                         "active_tasks": []
                     },
-                    "next_cycle_plan": []
+                    "next_cycle_plan": [],
+                    "multi_cycle_tasks": {
+                        "active_sequences": {},
+                        "completed_sequences": {},
+                        "current_sequence_id": None
+                    }
                 }
                 
         except Exception as e:
             print(f"Error loading memory: {e}")
             # Set up default memory structures
-            self.user_memory = {
-                "personal": {},
-                "tasks": {
-                    "completed": [],
-                    "in_progress": [],
-                    "priorities": []
+            self.user_memory = self._get_default_user_memory()
+            self.system_memory = self._get_default_system_memory()
+
+    def _get_default_user_memory(self):
+        """Get the default comprehensive user memory structure"""
+        return {
+            "personal_info": {
+                "profile": {
+                    "full_name": "",
+                    "preferred_name": "",
+                    "age": None,
+                    "date_of_birth": ""
                 },
-                "knowledge": {
-                    "learned_patterns": {},
-                    "user_preferences": {},
-                    "important_dates": {}
+                "contact": {
+                    "phone": "",
+                    "email": "",
+                    "address": ""
                 },
-                "notes": [],
-                "last_interaction": datetime.datetime.now().isoformat()
+                "appearance": {
+                    "height": "",
+                    "weight": ""
+                },
+                "preferences": {
+                    "communication_style": "",
+                    "interests": [],
+                    "goals": []
+                }
+            },
+            "health_and_wellness": {
+                "medical_conditions": [],
+                "medications": [],
+                "doctors": {},
+                "fitness": {
+                    "goals": [],
+                    "activities": []
+                },
+                "diet": {
+                    "restrictions": [],
+                    "preferences": []
+                },
+                "mental_health": {
+                    "mood_tracking": [],
+                    "stress_management": []
+                }
+            },
+            "calendar_and_events": {
+                "events": [],
+                "reminders": [],
+                "availability": {}
+            },
+            "finance_and_banking": {
+                "accounts": {},
+                "transactions": [],
+                "budgets": {},
+                "bills": [],
+                "investments": {},
+                "contracts": []
+            },
+            "social_and_relationships": {
+                "contacts": {
+                    "friends": [],
+                    "family": {},
+                    "colleagues": []
+                },
+                "social_events": [],
+                "friend_groups": {}
+            },
+            "work_and_projects": {
+                "current_job": {},
+                "projects": [],
+                "tasks": [],
+                "completed_tasks": [],
+                "goals": [],
+                "documents": []
+            },
+            "knowledge_and_learning": {
+                "skills": [],
+                "education": {},
+                "courses": [],
+                "certifications": [],
+                "travel": {
+                    "places_visited": [],
+                    "travel_plans": []
+                },
+                "vehicles": [],
+                "subscriptions": []
+            },
+            "devices_and_smart_home": {
+                "devices": {},
+                "smart_home_routines": []
+            },
+            "system_state": {
+                "last_interaction_timestamp": datetime.datetime.now().isoformat(),
+                "active_mode": "assistant",
+                "current_focus": "general_assistance"
+            },
+            "assistant_memory": {
+                "conversation_history": [],
+                "learned_patterns": {},
+                "user_feedback": []
             }
-            
-            self.system_memory = {
-                "system": {
-                    "version": "1.0.0",
-                    "last_startup": datetime.datetime.now().isoformat(),
-                    "cycles_completed": 0,
-                    "features_implemented": []
-                },
-                "self_improvement": {
-                    "proposed_enhancements": [],
-                    "successful_changes": [],
-                    "failed_attempts": []
-                },
-                "internal_state": {},
-                "technical_knowledge": {}
+        }
+
+    def _get_default_system_memory(self):
+        """Get the default system memory structure"""
+        return {
+            "system_state": {
+                "last_interaction_timestamp": datetime.datetime.now().isoformat(),
+                "active_mode": "assistant",
+                "current_focus": "general_assistance",
+                "system_version": "3.0.0"
+            },
+            "assistant_memory": {
+                "conversation_history": [],
+                "learned_patterns": {},            "user_feedback": []
+            },
+            "multi_cycle_tasks": {                "active_sequences": {},
+                "completed_sequences": {},
+                "current_sequence_id": None
             }
+        }
+
     def save_memory(self):
         """
         Save all memory stores to their respective files
         """
         try:
-            # Save user and system memory to the main memory file
-            combined_memory = {}
-            
-            # Copy user memory components
-            combined_memory["personal"] = self.user_memory.get("personal", {})
-            combined_memory["tasks"] = self.user_memory.get("tasks", {})
-            combined_memory["knowledge"] = self.user_memory.get("knowledge", {})
-            combined_memory["notes"] = self.user_memory.get("notes", [])
-            
-            # Copy system memory components
-            combined_memory["system"] = self.system_memory.get("system", {})
-            combined_memory["self_improvement"] = self.system_memory.get("self_improvement", {})
-            combined_memory["internal_state"] = self.system_memory.get("internal_state", {})
-            combined_memory["technical_knowledge"] = self.system_memory.get("technical_knowledge", {})
+            # Save comprehensive user memory directly (no more combining needed)
+            # Update system_state timestamp
+            self.user_memory.setdefault("system_state", {})["last_interaction_timestamp"] = datetime.datetime.now().isoformat()
             
             # Ensure directory exists
             os.makedirs(os.path.dirname(self.memory_path), exist_ok=True)
             
             with open(self.memory_path, 'w') as f:
-                json.dump(combined_memory, f, indent=2)
+                json.dump(self.user_memory, f, indent=2)
             
             # Save backend memory if applicable
             if self.is_backend and self.backend_memory_path:
+                # Update backend state timestamp
+                self.backend_memory.setdefault("backend_state", {})["last_execution"] = datetime.datetime.now().isoformat()
+                
                 os.makedirs(os.path.dirname(self.backend_memory_path), exist_ok=True)
                 with open(self.backend_memory_path, 'w') as f:
                     json.dump(self.backend_memory, f, indent=2)
-                
+                    
             return True
         except Exception as e:
             print(f"Error saving memory: {e}")

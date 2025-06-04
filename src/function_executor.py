@@ -21,7 +21,7 @@ class FunctionExecutor:
             new_content = args['content']
             editor.apply_edit(file_path, new_content)
             return f"Updated {os.path.basename(file_path)}"
-            
+        
         elif action_type == 'add_task':
             task = args['task']
             file_path = self._resolve_path(args.get('file', 'src/tasks.md'))
@@ -36,15 +36,16 @@ class FunctionExecutor:
                 tasks += f"- [ ] {task}\n"
                 editor.apply_edit(file_path, tasks)
                 
-                # Also update memory
-                memory_manager.update_user_memory({
-                    "tasks": {
-                        "in_progress": [task]
-                    }
-                })
+                # Update memory with new structure
+                user_mem = memory_manager.get_user_memory()
+                work_tasks = user_mem.get('work_and_projects', {}).get('tasks', [])
+                if task not in work_tasks:
+                    work_tasks.append(task)
+                    user_mem.setdefault('work_and_projects', {})['tasks'] = work_tasks
+                    memory_manager.update_user_memory(user_mem)
                 
             return f"Added task: {task}"
-            
+        
         elif action_type == 'complete_task':
             task = args['task']
             file_path = self._resolve_path(args.get('file', 'src/tasks.md'))
@@ -54,14 +55,13 @@ class FunctionExecutor:
                 tasks = tasks.replace(f"- [ ] {task}", f"- [x] {task}")
                 editor.apply_edit(file_path, tasks)
                 
-                # Update user memory
-                current_completed = memory_manager.get_user_memory().get("tasks", {}).get("completed", [])
-                if task not in current_completed:
-                    memory_manager.update_user_memory({
-                        "tasks": {
-                            "completed": current_completed + [task]
-                        }
-                    })
+                # Update user memory with new structure
+                user_mem = memory_manager.get_user_memory()
+                completed_tasks = user_mem.get('work_and_projects', {}).get('completed_tasks', [])
+                if task not in completed_tasks:
+                    completed_tasks.append(task)
+                    user_mem.setdefault('work_and_projects', {})['completed_tasks'] = completed_tasks
+                    memory_manager.update_user_memory(user_mem)
                     
                 return f"Completed task: {task}"
                 
@@ -84,15 +84,15 @@ class FunctionExecutor:
                 return f"Remembered information under '{key}'"
             else:
                 return "Error: No key provided for remember action"
-                
+        
         elif action_type == 'update_memory':
-            # Enhanced: Support dot notation and top-level keys for new schema, for all info
+            # Enhanced: Support dot notation for new comprehensive memory schema
             key = args.get('key')
             value = args.get('value')
             memory_type = args.get('memory_type', 'user')
             if memory_type == 'user' and key:
                 user_mem = memory_manager.get_user_memory()
-                # Support dot notation (e.g., personal.full_name)
+                # Support dot notation (e.g., personal_info.profile.full_name)
                 if '.' in key:
                     parts = key.split('.')
                     curr = user_mem
@@ -100,16 +100,29 @@ class FunctionExecutor:
                         curr = curr.setdefault(p, {})
                     curr[parts[-1]] = value
                 else:
-                    # Try to match to personal/knowledge/tasks if key exists, else always add to personal
-                    if key in user_mem.get('personal', {}):
-                        user_mem['personal'][key] = value
-                    elif key in user_mem.get('knowledge', {}):
-                        user_mem['knowledge'][key] = value
-                    elif key in user_mem.get('tasks', {}):
-                        user_mem['tasks'][key] = value
+                    # Map simple keys to new memory structure
+                    key_mappings = {
+                        'name': 'personal_info.profile.full_name',
+                        'age': 'personal_info.profile.age',
+                        'height': 'personal_info.appearance.height',
+                        'weight': 'personal_info.appearance.weight',
+                        'phone': 'personal_info.contact.phone',
+                        'email': 'personal_info.contact.email',
+                        'address': 'personal_info.contact.address',
+                        'birthday': 'personal_info.profile.date_of_birth'
+                    }
+                    
+                    if key in key_mappings:
+                        # Use the mapped path
+                        parts = key_mappings[key].split('.')
+                        curr = user_mem
+                        for p in parts[:-1]:
+                            curr = curr.setdefault(p, {})
+                        curr[parts[-1]] = value
                     else:
-                        # Always add to personal if not found elsewhere
-                        user_mem.setdefault('personal', {})[key] = value
+                        # Default to personal_info.profile for unmapped keys
+                        user_mem.setdefault('personal_info', {}).setdefault('profile', {})[key] = value
+                        
                 memory_manager.update_user_memory(user_mem)
                 return f"User memory updated: {key} = {value}"
             elif memory_type == 'system' and key:
@@ -192,13 +205,19 @@ class FunctionExecutor:
             
             # Special case handling for common fields that might be requested without full path
             common_fields = {
-                "name": "personal.name", 
-                "full_name": "personal.full_name",
-                "age": "personal.age",
-                "height": "personal.height",
-                "weight": "personal.weight",
-                "birthday_preferences": "personal.birthday_preferences",
-                "friends": "personal.friends"
+                "name": "personal_info.profile.full_name", 
+                "full_name": "personal_info.profile.full_name",
+                "age": "personal_info.profile.age",
+                "height": "personal_info.appearance.height",
+                "weight": "personal_info.appearance.weight",
+                "phone": "personal_info.contact.phone",
+                "email": "personal_info.contact.email",
+                "address": "personal_info.contact.address",
+                "friends": "social_and_relationships.contacts.friends",
+                "family": "social_and_relationships.family",
+                "tasks": "work_and_projects.tasks",
+                "health": "health_and_wellness",
+                "medical": "health_and_wellness.medical_conditions"
             }
             
             if section in common_fields:
@@ -207,14 +226,14 @@ class FunctionExecutor:
             if data_type == 'memory':
                 user_mem = memory_manager.get_user_memory()
                 
-                # Handle direct field access first (no section or with "personal." prefix)
+                # Handle direct field access first (no section or with dot notation)
                 if section:
                     # If section contains dots, it's a nested path
                     if '.' in section:
                         parts = section.split('.')
                         curr = user_mem
                         for p in parts:
-                            if p in curr:
+                            if isinstance(curr, dict) and p in curr:
                                 curr = curr[p]
                             else:
                                 return {
@@ -228,7 +247,7 @@ class FunctionExecutor:
                         }
                     # Otherwise check top-level sections first
                     elif section in user_mem:
-                        if key and key in user_mem[section]:
+                        if key and isinstance(user_mem[section], dict) and key in user_mem[section]:
                             return {
                                 "type": "memory_data",
                                 "section": section,
@@ -241,48 +260,63 @@ class FunctionExecutor:
                                 "section": section,
                                 "data": user_mem[section]
                             }
-                    # Check if it's a direct field in personal section
-                    elif section in user_mem.get('personal', {}):
-                        return {
-                            "type": "memory_data", 
-                            "section": "personal",
-                            "key": section,
-                            "data": user_mem['personal'][section]
-                        }
-                    else:
-                        # Try to find it anywhere in memory
-                        for sect_name, sect_data in user_mem.items():
-                            if isinstance(sect_data, dict) and section in sect_data:
-                                return {
-                                    "type": "memory_data",
-                                    "section": sect_name,
-                                    "key": section,
-                                    "data": sect_data[section]
-                                }
                         
-                        return {
-                            "type": "error",
-                            "message": f"Section '{section}' not found in memory"
-                        }
+                    else:
+                        # Search through all sections for the key
+                        found_data = []
+                        for sect_name, sect_data in user_mem.items():
+                            if isinstance(sect_data, dict):
+                                # Search recursively in nested structures
+                                def search_nested(data, path=""):
+                                    results = []
+                                    if isinstance(data, dict):
+                                        for k, v in data.items():
+                                            current_path = f"{path}.{k}" if path else k
+                                            if k == section or section.lower() in k.lower():
+                                                results.append((current_path, v))
+                                            if isinstance(v, dict):
+                                                results.extend(search_nested(v, current_path))
+                                    return results
+                                
+                                nested_results = search_nested(sect_data, sect_name)
+                                found_data.extend(nested_results)
+                        
+                        if found_data:
+                            return {
+                                "type": "memory_data",
+                                "section": section,
+                                "data": dict(found_data) if len(found_data) > 1 else found_data[0][1]
+                            }
+                        else:
+                            return {
+                                "type": "error",
+                                "message": f"Section '{section}' not found in memory"
+                            }
                 
                 # Search by query across all sections
                 elif query:
                     results = {}
                     query_lower = query.lower()
                     
-                    for section_name, section_data in user_mem.items():
-                        if isinstance(section_data, dict):
-                            for key_name, value in section_data.items():
+                    def search_recursive(data, path=""):
+                        matches = {}
+                        if isinstance(data, dict):
+                            for key_name, value in data.items():
+                                current_path = f"{path}.{key_name}" if path else key_name
                                 if (query_lower in key_name.lower() or 
                                     (isinstance(value, str) and query_lower in value.lower())):
-                                    if section_name not in results:
-                                        results[section_name] = {}
-                                    results[section_name][key_name] = value
+                                    matches[current_path] = value
+                                elif isinstance(value, dict):
+                                    nested_matches = search_recursive(value, current_path)
+                                    matches.update(nested_matches)
+                        return matches
+                    
+                    all_matches = search_recursive(user_mem)
                                         
                     return {
                         "type": "memory_data", 
                         "query": query,
-                        "data": results
+                        "data": all_matches
                     }
                 # Return entire memory if no specific section/query
                 else:
@@ -324,7 +358,86 @@ class FunctionExecutor:
                 return {
                     "type": "error",
                     "message": f"Unknown data type: {data_type}"
-                }
+                }        
+            
+        elif action_type == 'add_subtask':
+            # Add a subtask to an existing task
+            parent_task_id = args.get('parent_task_id')
+            description = args.get('description')
+            priority = args.get('priority', 'medium')
+            
+            if not parent_task_id or not description:
+                return "Error: parent_task_id and description are required for add_subtask"
+            
+            # Find the parent task in backend memory
+            backend_mem = memory_manager.get_backend_memory()
+            processing_queue = backend_mem.get('processing_queue', [])
+            
+            # Look for the parent task
+            found = False
+            for i, task_entry in enumerate(processing_queue):
+                task = task_entry.get('task', {})
+                if isinstance(task, dict) and task.get('id') == parent_task_id:
+                    # Initialize subtasks list if not present
+                    if 'subtasks' not in task:
+                        task['subtasks'] = []
+                    
+                    # Add the new subtask
+                    subtask = {
+                        'description': description,
+                        'priority': priority,
+                        'status': 'pending',
+                        'created_at': datetime.datetime.now().isoformat()
+                    }
+                    task['subtasks'].append(subtask)
+                    found = True
+                    memory_manager.update_backend_memory({'processing_queue': processing_queue})
+                    break
+            
+            if found:
+                return f"Added subtask to task {parent_task_id}: {description}"
+            else:
+                return f"Error: Parent task {parent_task_id} not found"
+
+        elif action_type == 'create_task_sequence':
+            # Create a multi-cycle task sequence for complex operations
+            sequence_name = args.get('sequence_name')
+            tasks = args.get('tasks', [])
+            description = args.get('description', '')
+            priority = args.get('priority', 'medium')
+            
+            if not sequence_name or not tasks:
+                return "Error: sequence_name and tasks are required for create_task_sequence"
+            
+            # Update backend memory with the new task sequence
+            backend_mem = memory_manager.get_system_memory()
+            multi_cycle = backend_mem.setdefault('multi_cycle_tasks', {})
+            active_sequences = multi_cycle.setdefault('active_sequences', {})
+            
+            # Generate unique sequence ID
+            import time
+            sequence_id = f"{sequence_name}_{int(time.time())}"
+            
+            active_sequences[sequence_id] = {
+                'name': sequence_name,
+                'description': description,
+                'tasks': tasks,
+                'created_at': time.time(),
+                'status': 'pending',
+                'priority': priority,
+                'current_task_index': 0,
+                'completed_tasks': [],
+                'failed_tasks': []
+            }
+            
+            # Set as current sequence if none active
+            if not multi_cycle.get('current_sequence_id'):
+                multi_cycle['current_sequence_id'] = sequence_id
+            
+            memory_manager.update_system_memory(backend_mem)
+            
+            return f"Created task sequence '{sequence_name}' with {len(tasks)} tasks (ID: {sequence_id})"
+
         else:
             return f"Unknown action: {action_type}"
     

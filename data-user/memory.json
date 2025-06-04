@@ -1,28 +1,5 @@
 {
-  "personal": {
-    "height": "1.94",
-    "full_name": null,
-    "friends": [],
-    "birthdate": null,
-    "age": 24,
-    "gender": null,
-    "weight": null,
-    "health_conditions": "{\"condition\": \"knee pain\", \"description\": \"pain in the knee while skiing\"}",
-    "medications": [],
-    "emergency_contacts": [],
-    "address": null,
-    "contracts": [],
-    "insurance": {},
-    "doctors": [],
-    "family": [],
-    "pets": [],
-    "hobbies": [],
-    "name": "Francesco",
-    "birthday_preferences": "{'occasion': 'birthdays', 'location': 'beach', 'with_family': true}",
-    "calendat": [
-      "{\"date\": \"next Monday\", \"time\": \"10 AM\"}"
-    ]
-  },
+  "personal": {},
   "tasks": {
     "completed": [],
     "in_progress": [],
@@ -31,32 +8,26 @@
   "knowledge": {
     "learned_patterns": {},
     "user_preferences": {},
-    "important_dates": {},
-    "subscriptions": [],
-    "important_documents": [],
-    "goals": [],
-    "travel_history": [],
-    "vehicles": []
+    "important_dates": {}
   },
   "notes": [],
   "system": {
     "version": "2.0.0",
-    "last_startup": "2025-06-03T14:39:55.092608",
-    "cycles_completed": 15,
+    "last_startup": "2025-06-04T11:12:39.575242",
+    "cycles_completed": 0,
     "features_implemented": [
       "split-memory"
     ],
-    "backend_last_startup": "2025-06-04T09:26:23.118935",
-    "frontend_last_startup": "2025-06-04T09:18:06.108007"
+    "frontend_last_startup": "2025-06-04T11:12:39.575328"
   },
   "self_improvement": {
     "proposed_enhancements": [],
     "successful_changes": [],
     "failed_attempts": []
   },
-  "internal_state": {
-    "last_processed_request_id": "a5bef40a-77c8-4bcf-8168-edb4aeea4357",
-    "last_request_time": "2025-06-04T10:04:17.287305"
-  },
-  "technical_knowledge": {}
+  "internal_state": {},
+  "technical_knowledge": {},
+  "system_state": {
+    "last_interaction_timestamp": "2025-06-04T13:09:42.668912"
+  }
 }

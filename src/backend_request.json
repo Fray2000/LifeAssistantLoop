@@ -1,17 +1,12 @@
 {
-  "id": "a5bef40a-77c8-4bcf-8168-edb4aeea4357",
+  "id": "2cd852ab-0a58-4f4d-94ba-f14fe3b022d1",
   "type": "command",
   "content": {
-    "action": "append_to_list",
-    "path": "personal.calendat",
-    "context": {
-      "date": "next Monday",
-      "time": "10 AM"
-    },
-    "optional_context": {
-      "with_family": true
+    "action": "update_memory",
+    "data": {
+      "personal.age": 24
     }
   },
-  "timestamp": "2025-06-04T10:04:16.400155",
+  "timestamp": "2025-06-04T13:09:39.803305",
   "response_required": true
 }

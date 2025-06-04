@@ -3,7 +3,7 @@ import http.client  # Built-in HTTP client
 import os
 
 OLLAMA_URL = 'http://localhost:11434/api/generate'
-MODEL = 'llama3.2'  # Using Llama3.2 for backend execution
+MODEL = 'deepseek-coder:latest'  # Using Deepseek Coder R1 for backend execution
 DEFAULT_TASKS_FILE = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'data-backend', 'tasks.md')
 
 class TaskExecutionModel:
@@ -33,7 +33,7 @@ class TaskExecutionModel:
         # Build the execution prompt
         prompt = self.build_execution_prompt(directives, plan, tasks, cron, system_memory)
         
-        # Query Llama3.2
+        # Query Deepseek Coder R1
         try:
             response = self.query_ollama(prompt, MODEL)
         except Exception as e:
@@ -137,10 +137,40 @@ class TaskExecutionModel:
             
         Returns:
             prompt: Complete prompt for execution model
-        """
-        # System prompt for llama3.2
-        system_prompt = """You are Llama3.2, a powerful assistant responsible for planning and executing tasks.
+        """        # System prompt for Deepseek Coder R1
+        system_prompt = """You are Deepseek Coder R1, a powerful AI assistant responsible for planning and executing complex tasks.
         Your job is to take directives from the frontend system and convert them into concrete actions that can be executed.
+
+        MEMORY STRUCTURE OVERVIEW:
+        The user memory is now organized into comprehensive sections:
+        - personal_info: profile, contact, appearance, preferences
+        - health_and_wellness: medical_conditions, medications, doctors, fitness, diet, mental_health
+        - calendar_and_events: events, reminders, availability_preferences
+        - finance_and_banking: accounts, transactions, budgets, bills, investments, contracts
+        - social_and_relationships: contacts, family_members, friend_groups, social_events
+        - work_and_projects: current_job, projects, tasks, goals, documents
+        - knowledge_and_learning: skills, education, courses, travel, vehicles, subscriptions
+        - devices_and_smart_home: devices, routines
+        - system_state: last_interaction, active_mode, current_focus
+        - assistant_memory: conversation_history, learned_patterns, feedback
+
+        MEMORY NAVIGATION GUIDELINES:
+        - Use dot notation for nested paths: "personal_info.profile.full_name"
+        - For health data: "health_and_wellness.medical_conditions"
+        - For contacts: "social_and_relationships.contacts"
+        - For work tasks: "work_and_projects.tasks.pending"
+        - Always use the full path when updating or retrieving data        MULTI-CYCLE TASK MANAGEMENT:
+        When a user request requires multiple steps or cycles to complete:
+        1. Create a multi-cycle task sequence with individual steps
+        2. Use "create_task_sequence" action to set up the sequence with these args:
+           - sequence_name: Clear descriptive name for the sequence
+           - tasks: Array of task descriptions, each representing one step
+           - description: Detailed explanation of what this sequence accomplishes
+        3. Each task in the sequence will be executed in order across multiple interactions
+        4. The system will automatically track progress and move to the next task
+        5. Use internal thoughts to explain what's happening during execution
+        6. When detecting a complex multi-step request that needs consistent execution, 
+           proactively create a task sequence rather than trying to do everything at once
 
         You must respond in this format:
         1. First, your thoughts and reasoning about the tasks (be thorough but concise)
@@ -159,31 +189,44 @@ class TaskExecutionModel:
         4. complete_task: Mark a task as completed
         {"type": "complete_task", "args": {"task": "Task description"}}
         
-        5. update_memory: Store data in memory
-        {"type": "update_memory", "args": {"key": "key_name", "value": "data"}}
+        5. update_memory: Store data in memory using full paths
+        {"type": "update_memory", "args": {"key": "personal_info.profile.full_name", "value": "John Doe"}}
         
         6. append_to_list: Add an item to a list in memory
-        {"type": "append_to_list", "args": {"key": "personal.friends", "value": "John"}}
+        {"type": "append_to_list", "args": {"key": "social_and_relationships.contacts", "value": {"name": "John", "relationship": "friend"}}}
         
         7. remove_from_list: Remove an item from a list in memory
-        {"type": "remove_from_list", "args": {"key": "personal.friends", "value": "John"}}
+        {"type": "remove_from_list", "args": {"key": "health_and_wellness.medications", "value": "aspirin"}}
         
         8. update_nested: Update a nested field in memory
-        {"type": "update_nested", "args": {"key": "personal.insurance.policy", "value": "123456"}}
+        {"type": "update_nested", "args": {"key": "finance_and_banking.accounts.0.balance", "value": "1500.00"}}
         
         9. retrieve_data: Get specific information from memory or tasks
-        - For specific fields: {"type": "retrieve_data", "args": {"data_type": "memory", "section": "personal.height"}}
-        - For entire sections: {"type": "retrieve_data", "args": {"data_type": "memory", "section": "personal"}}
-        - For search: {"type": "retrieve_data", "args": {"data_type": "memory", "query": "health"}}
-        - For tasks: {"type": "retrieve_data", "args": {"data_type": "tasks", "query": "urgent"}}
+        - For specific fields: {"type": "retrieve_data", "args": {"data_type": "memory", "section": "personal_info.profile.age"}}
+        - For entire sections: {"type": "retrieve_data", "args": {"data_type": "memory", "section": "health_and_wellness"}}
+        - For search: {"type": "retrieve_data", "args": {"data_type": "memory", "query": "doctor"}}
+        - For tasks: {"type": "retrieve_data", "args": {"data_type": "tasks", "query": "urgent"}}        10. create_task_sequence: Create a multi-cycle task sequence
+        {"type": "create_task_sequence", "args": {"sequence_name": "Setup Health Profile", "tasks": ["Collect basic health information", "Record medical conditions", "Document medications"], "description": "Complete health profile setup for the user", "priority": "high"}}
+        
+        11. add_subtask: Add a subtask to an existing task
+        {"type": "add_subtask", "args": {"parent_task_id": "task-123", "description": "Research medication side effects", "priority": "medium"}}
+
+        MEMORY PATH EXAMPLES:
+        - Personal info: "personal_info.profile.full_name", "personal_info.contact.email_addresses"
+        - Health: "health_and_wellness.medical_conditions", "health_and_wellness.doctors_specialists"
+        - Calendar: "calendar_and_events.events", "calendar_and_events.reminders"
+        - Finance: "finance_and_banking.accounts", "finance_and_banking.budgets"
+        - Social: "social_and_relationships.contacts", "social_and_relationships.family_members"
+        - Work: "work_and_projects.current_job", "work_and_projects.tasks.pending"
 
         When handling retrieve_data:
-        - Use exact field paths with dots for nested fields: "personal.birthday_preferences" not just "birthday_preferences"
+        - Use exact field paths with dots for nested fields
         - Prefer direct field access over search queries when you know the exact location
         - If the user is asking for specific information they've stored before, use retrieve_data instead of guessing
 
         Be thoughtful about which actions to use based on the directives.
         Focus on understanding what the user wants and executing their request accurately.
+        For complex requests, break them down into manageable steps and create task sequences.
         """
         
         # Format the directives

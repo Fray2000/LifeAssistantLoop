@@ -10,6 +10,8 @@ import sys
 import platform  # For platform detection
 import threading
 import re
+import subprocess
+import queue
 
 from src.task_execution_model import TaskExecutionModel
 from src.editor import Editor
@@ -66,7 +68,7 @@ class BackendLoop:
         """Initialize the backend components"""
         print(f"{Colors.HEADER}Initializing Life Assistant Backend...{Colors.ENDC}")
         
-        self.task_model = TaskExecutionModel()    # Llama3.2 for task execution
+        self.task_model = TaskExecutionModel()    # Deepseek Coder for task execution
         self.editor = Editor()
         self.executor = FunctionExecutor()
         self.memory_manager = MemoryManager(USER_MEMORY, BACKEND_MEMORY, is_backend=True)
@@ -78,6 +80,11 @@ class BackendLoop:
         # Timer for periodic tasks
         self.last_check_time = time.time()
         
+        # Internal thoughts window
+        self.internal_window = None
+        self.thoughts_queue = queue.Queue()
+        self.start_internal_window()
+        
         # Update startup time in system memory
         self.memory_manager.update_system_memory({
             "system": {
@@ -88,6 +95,129 @@ class BackendLoop:
         
         self.ensure_directories_exist()
         print(f"{Colors.GREEN}Backend initialized and ready{Colors.ENDC}")
+            
+            
+    def start_internal_window(self):
+        """Start separate terminal windows for internal thoughts and task tree visualization"""
+        try:
+            # Create internal_thoughts.log if it doesn't exist
+            thoughts_file = os.path.join(DATA_BACKEND_DIR, 'internal_thoughts.log')
+            if not os.path.exists(thoughts_file):
+                os.makedirs(os.path.dirname(thoughts_file), exist_ok=True)
+                with open(thoughts_file, 'w', encoding='utf-8') as f:
+                    f.write("")
+            
+            # Also make sure task_tree.log exists
+            task_tree_file = os.path.join(DATA_BACKEND_DIR, 'task_tree.log')
+            if not os.path.exists(task_tree_file):
+                with open(task_tree_file, 'w', encoding='utf-8') as f:
+                    f.write("{}")
+            
+            # Launch the dedicated windows in separate processes
+            if platform.system() == "Windows":
+                # Launch internal thoughts window
+                self.internal_window = subprocess.Popen([
+                    "powershell", "-Command", 
+                    "Start-Process", "python", "-ArgumentList", 
+                    f'"{os.path.join(BASE_DIR, "internal_window.py")}"'
+                ])
+                
+                # Launch task tree window
+                self.task_tree_window = subprocess.Popen([
+                    "powershell", "-Command",
+                    "Start-Process", "python", "-ArgumentList",
+                    f'"{os.path.join(BASE_DIR, "task_tree_window.py")}"'
+                ])
+                
+            elif platform.system() == "Darwin":  # macOS
+                # Launch internal thoughts window
+                self.internal_window = subprocess.Popen([
+                    "osascript", "-e",
+                    f'tell app "Terminal" to do script "python3 {os.path.join(BASE_DIR, "internal_window.py")}"'
+                ])
+                
+                # Launch task tree window
+                self.task_tree_window = subprocess.Popen([
+                    "osascript", "-e", 
+                    f'tell app "Terminal" to do script "python3 {os.path.join(BASE_DIR, "task_tree_window.py")}"'
+                ])
+                
+            elif platform.system() == "Linux":
+                # Try common terminal emulators
+                terminals = ["gnome-terminal", "konsole", "xterm"]
+                for terminal in terminals:
+                    try:
+                        # Launch internal thoughts window
+                        self.internal_window = subprocess.Popen([
+                            terminal, "--", "python3",
+                            os.path.join(BASE_DIR, "internal_window.py")
+                        ])
+                        
+                        # Launch task tree window
+                        self.task_tree_window = subprocess.Popen([
+                            terminal, "--", "python3",
+                            os.path.join(BASE_DIR, "task_tree_window.py")
+                        ])
+                        break
+                    except FileNotFoundError:
+                        continue
+            # Start thread to monitor thoughts queue
+            self.thoughts_thread = threading.Thread(target=self._process_thoughts_queue, daemon=True)
+            self.thoughts_thread.start()
+            
+            self.log_internal_thought("SUCCESS", "Internal thoughts window started")
+            
+        except Exception as e:
+            print(f"{Colors.YELLOW}Could not start internal window: {e}{Colors.ENDC}")
+            self.internal_window = None
+
+    def _process_thoughts_queue(self):
+        """Process thoughts from the queue and display in internal window"""
+        while not self.should_exit:
+            try:
+                if not self.thoughts_queue.empty():
+                    thought = self.thoughts_queue.get_nowait()
+                    # In a real implementation, we would send this to the internal window
+                    # For now, we'll just log it to a file that the window can read
+                    self._write_thought_to_file(thought)
+            except queue.Empty:
+                pass
+            except Exception as e:
+                print(f"{Colors.RED}Error processing thoughts: {e}{Colors.ENDC}")
+            time.sleep(0.1)
+
+    def _write_thought_to_file(self, thought):
+        """Write thought to a file that the internal window can monitor"""
+        thoughts_file = os.path.join(DATA_BACKEND_DIR, 'internal_thoughts.log')
+        try:
+            with open(thoughts_file, 'a', encoding='utf-8') as f:
+                timestamp = datetime.datetime.now().strftime("%H:%M:%S")
+                f.write(f"[{timestamp}] {thought['type']}: {thought['content']}\n")
+        except Exception as e:
+            print(f"{Colors.RED}Error writing thought: {e}{Colors.ENDC}")
+
+    def log_internal_thought(self, thought_type, content):
+        """Log an internal thought to be displayed in the internal window"""
+        if self.debug_mode or thought_type in ['ACTION', 'MEMORY', 'ERROR']:
+            thought = {
+                'type': thought_type,
+                'content': content,
+                'timestamp': datetime.datetime.now().isoformat()
+            }
+            self.thoughts_queue.put(thought)
+            
+            # Also display in main console if debug mode
+            if self.debug_mode:
+                color_map = {
+                    'THINKING': Colors.CYAN,
+                    'ACTION': Colors.YELLOW,
+                    'MEMORY': Colors.GREEN,
+                    'TASK': Colors.PURPLE,
+                    'ERROR': Colors.RED,
+                    'SUCCESS': Colors.BLUE
+                }
+                color = color_map.get(thought_type, Colors.ENDC)
+                print(f"{color}🧠 {thought_type}: {content}{Colors.ENDC}")
 
     def ensure_directories_exist(self):
         """Make sure all required directories exist"""
@@ -129,7 +259,7 @@ class BackendLoop:
             os.makedirs(directory, exist_ok=True)
             with open(BACKEND_TASKS, 'w') as f:
                 f.write("# Backend Tasks\n\n")
-    
+
     def display_debug_info(self, title, content, color=Colors.GRAY):
         """Display debug information in the terminal"""
         if not self.debug_mode:
@@ -152,7 +282,7 @@ class BackendLoop:
                 print(f"{color}{content}{Colors.ENDC}")
                 
         print(f"{color}{'='*40}{Colors.ENDC}")
-    
+
     def check_for_requests(self):
         """Check if there are any new requests from the frontend"""
         if os.path.exists(REQUEST_FILE):
@@ -171,12 +301,14 @@ class BackendLoop:
                 print(f"{Colors.RED}Error reading request file. Invalid JSON.{Colors.ENDC}")
             except Exception as e:
                 print(f"{Colors.RED}Error checking for requests: {e}{Colors.ENDC}")
-                
+
         return None
     
     def process_request(self, request):
         """Process a request from the frontend, extract and store user info if found"""
         self.display_debug_info("Processing Request", request)
+        self.log_internal_thought("ACTION", f"Processing new request: {request.get('id')}")
+        
         cycle_num = self.memory_manager.get_system_memory().get("system", {}).get("cycles_completed", 0) + 1
         try:
             # Update last processed request id
@@ -186,19 +318,70 @@ class BackendLoop:
                     "last_request_time": datetime.datetime.now().isoformat()
                 }
             })
+            
+            # Check for active multi-cycle task sequences
+            backend_mem = self.memory_manager.get_system_memory()
+            multi_cycle = backend_mem.get('multi_cycle_tasks', {})
+            current_sequence_id = multi_cycle.get('current_sequence_id')
+            
+            # If there's an active sequence, process it first
+            if current_sequence_id and current_sequence_id in multi_cycle.get('active_sequences', {}):
+                self.log_internal_thought("TASK", f"Continuing multi-cycle sequence: {current_sequence_id}")
+                sequence_result = self._process_multi_cycle_sequence(current_sequence_id)
+                if sequence_result:
+                    # If sequence is complete or failed, process the new request normally
+                    self.log_internal_thought("TASK", f"Multi-cycle sequence completed/failed, processing new request")
+                else:
+                    # Sequence is still active, return status update
+                    response = {
+                        "id": request.get("id"),
+                        "status": "success",
+                        "content": "Multi-cycle task sequence in progress. Next task will be processed automatically.",
+                        "multi_cycle_status": "active",
+                        "timestamp": datetime.datetime.now().isoformat()
+                    }
+                    with open(RESPONSE_FILE, 'w') as f:
+                        json.dump(response, f, indent=2)
+                    return response
+            
             directives = request.get("content", {})
             tasks = ""
             if os.path.exists(TASKS):
                 with open(TASKS, 'r') as f:
                     tasks = f.read()
+            
+            self.log_internal_thought("THINKING", "Analyzing request with Deepseek Coder R1")
+              # Check for multi-cycle tasks in progress
+            system_memory = self.memory_manager.get_system_memory()
+            multi_cycle = system_memory.get('multi_cycle_tasks', {})
+            current_seq_id = multi_cycle.get('current_sequence_id')
+            
+            # If there's an active multi-cycle task sequence, get the current task
+            current_task = None
+            if current_seq_id:
+                active_sequences = multi_cycle.get('active_sequences', {})
+                if current_seq_id in active_sequences:
+                    sequence = active_sequences[current_seq_id]
+                    tasks_list = sequence.get('tasks', [])
+                    current_idx = sequence.get('current_task_index', 0)
+                    
+                    if current_idx < len(tasks_list):
+                        current_task = tasks_list[current_idx]
+                        directives['current_multi_cycle_task'] = current_task
+                        
+                        self.log_internal_thought("TASK", f"Processing multi-cycle task: {current_task}")
+                        self.log_internal_thought("TASK", f"Sequence: {sequence['name']} ({current_idx+1}/{len(tasks_list)})")
+            
             # Execute directives with task execution model
             task_thoughts, actions, execution_results = self.task_model.execute_directives(
                 directives,
                 "",
                 tasks,
                 "",
-                self.memory_manager.get_system_memory()
+                system_memory
             )
+            
+            self.log_internal_thought("THINKING", f"Generated {len(actions)} actions to execute")
             # --- New: Extract and store user info (e.g., height) ---
             user_info = {}
             # Example: extract height from thoughts or directives
@@ -212,10 +395,9 @@ class BackendLoop:
                     user_mem['personal'] = {}
                 user_mem['personal'].update(user_info)
                 self.memory_manager.update_user_memory({'personal': user_mem['personal']})
-            # --- End new ---
-            # Display debug info for Llama3.2's processing
-            self.display_debug_info("Llama3.2 Thoughts", task_thoughts, Colors.YELLOW)
-            self.display_debug_info("Llama3.2 Actions", actions, Colors.YELLOW)
+            # --- End new ---            # Display debug info for Deepseek Coder R1's processing
+            self.display_debug_info("Deepseek Coder R1 Thoughts", task_thoughts, Colors.YELLOW)
+            self.display_debug_info("Deepseek Coder R1 Actions", actions, Colors.YELLOW)
             
             # Execute actions
             print(f"{Colors.YELLOW}Executing actions...{Colors.ENDC}")
@@ -223,11 +405,17 @@ class BackendLoop:
             
             for i, action in enumerate(actions):
                 try:
-                    print(f"  {Colors.BLUE}▶ Action {i+1}/{len(actions)}: {action.get('type')}{Colors.ENDC}")
+                    action_type = action.get('type')
+                    self.log_internal_thought("ACTION", f"Executing {action_type}: {action.get('args', {})}")
+                    print(f"  {Colors.BLUE}▶ Action {i+1}/{len(actions)}: {action_type}{Colors.ENDC}")
+                    
                     result = self.executor.execute(action, self.editor, self.memory_manager)
                     log_change(CHANGE_LOG, action, result)
+                    
+                    self.log_internal_thought("SUCCESS", f"Result: {result}")
+                    
                     executed_actions.append({
-                        "type": action.get("type"),
+                        "type": action_type,
                         "args": action.get("args", {}),
                         "result": result,
                         "success": True
@@ -259,15 +447,54 @@ class BackendLoop:
             # Save the response
             with open(RESPONSE_FILE, 'w') as f:
                 json.dump(response, f, indent=2)
-                
-            # Update cycle count
+                  # Update cycle count
             self.memory_manager.update_system_memory({
                 "system": {
                     "cycles_completed": cycle_num
                 }
             })
             
+            # Handle multi-cycle task progression if applicable
+            if current_seq_id:
+                system_memory = self.memory_manager.get_system_memory()
+                multi_cycle = system_memory.get('multi_cycle_tasks', {})
+                active_sequences = multi_cycle.get('active_sequences', {})
+                
+                if current_seq_id in active_sequences:
+                    sequence = active_sequences[current_seq_id]
+                    current_idx = sequence.get('current_task_index', 0)
+                    
+                    # Mark current task as completed
+                    sequence['completed_tasks'].append({
+                        'task': sequence['tasks'][current_idx],
+                        'completed_at': datetime.datetime.now().isoformat(),
+                        'result': execution_results
+                    })
+                    
+                    # Move to next task
+                    current_idx += 1
+                    sequence['current_task_index'] = current_idx
+                    
+                    # Check if sequence is complete
+                    if current_idx >= len(sequence['tasks']):
+                        sequence['status'] = 'completed'
+                        self.log_internal_thought("TASK", f"Multi-cycle task sequence '{sequence['name']}' completed!")
+                        
+                        # Move to completed sequences
+                        completed = multi_cycle.setdefault('completed_sequences', {})
+                        completed[current_seq_id] = sequence
+                        del active_sequences[current_seq_id]
+                        
+                        # Clear current sequence ID
+                        multi_cycle['current_sequence_id'] = None
+                    else:
+                        self.log_internal_thought("TASK", f"Moving to next task in sequence: {sequence['tasks'][current_idx]}")
+                        
+                    # Save updated memory
+                    self.memory_manager.update_system_memory(system_memory)
+            
             self.display_debug_info("Response Created", response)
+            self.log_internal_thought("SUCCESS", "Request processing complete")
             return response
                 
         except Exception as e:
@@ -334,7 +561,8 @@ class BackendLoop:
                         json.dump([], f)
             except Exception as e:
                 print(f"{Colors.RED}Error processing task buffer: {e}{Colors.ENDC}")
-                
+                  
+                  
     def check_constant_tasks(self):
         """Check and process constant tasks that are due for execution"""
         due_tasks = self.memory_manager.get_due_constant_tasks()
@@ -361,6 +589,102 @@ class BackendLoop:
                 
             # Save memory to update task execution times
             self.memory_manager.save_memory()
+    
+    def _process_multi_cycle_sequence(self, sequence_id):
+        """Process a specific task in a multi-cycle sequence
+        
+        Returns:
+            bool: True if sequence is complete/failed, False if still active
+        """
+        system_memory = self.memory_manager.get_system_memory()
+        multi_cycle = system_memory.get('multi_cycle_tasks', {})
+        active_sequences = multi_cycle.get('active_sequences', {})
+        
+        if sequence_id not in active_sequences:
+            self.log_internal_thought("ERROR", f"Cannot process sequence {sequence_id}: not found in active sequences")
+            return True
+            
+        sequence = active_sequences[sequence_id]
+        current_idx = sequence.get('current_task_index', 0)
+        tasks = sequence.get('tasks', [])
+        
+        if current_idx >= len(tasks):
+            # Sequence is already complete
+            sequence['status'] = 'completed'
+            self.log_internal_thought("TASK", f"Multi-cycle task sequence '{sequence['name']}' already completed!")
+            
+            # Move to completed sequences
+            completed = multi_cycle.setdefault('completed_sequences', {})
+            completed[sequence_id] = sequence
+            del active_sequences[sequence_id]
+            
+            # Clear current sequence ID if this was the active one
+            if multi_cycle.get('current_sequence_id') == sequence_id:
+                multi_cycle['current_sequence_id'] = None
+                
+            # Save updated memory
+            self.memory_manager.update_system_memory(system_memory)
+            return True
+            
+        # Get the current task and update status
+        current_task = tasks[current_idx]
+        self.log_internal_thought("TASK", f"Processing multi-cycle task: {current_task}")
+        self.log_internal_thought("TASK", f"Sequence: {sequence['name']} ({current_idx+1}/{len(tasks)})")
+        
+        # For now, we just update status - actual processing happens in process_request
+        # The task execution is handled when the user makes their next request
+        sequence['status'] = 'in_progress'
+        self.memory_manager.update_system_memory(system_memory)
+        
+        return False
+      
+    def _process_multi_cycle_sequence(self, sequence_id):
+        """Process a specific task in a multi-cycle sequence
+        
+        Returns:
+            bool: True if sequence is complete/failed, False if still active
+        """
+        system_memory = self.memory_manager.get_system_memory()
+        multi_cycle = system_memory.get('multi_cycle_tasks', {})
+        active_sequences = multi_cycle.get('active_sequences', {})
+        
+        if sequence_id not in active_sequences:
+            self.log_internal_thought("ERROR", f"Cannot process sequence {sequence_id}: not found in active sequences")
+            return True
+            
+        sequence = active_sequences[sequence_id]
+        current_idx = sequence.get('current_task_index', 0)
+        tasks = sequence.get('tasks', [])
+        
+        if current_idx >= len(tasks):
+            # Sequence is already complete
+            sequence['status'] = 'completed'
+            self.log_internal_thought("SEQUENCE", f"Multi-cycle task sequence '{sequence['name']}' already completed!")
+            
+            # Move to completed sequences
+            completed = multi_cycle.setdefault('completed_sequences', {})
+            completed[sequence_id] = sequence
+            del active_sequences[sequence_id]
+            
+            # Clear current sequence ID if this was the active one
+            if multi_cycle.get('current_sequence_id') == sequence_id:
+                multi_cycle['current_sequence_id'] = None
+                
+            # Save updated memory
+            self.memory_manager.update_system_memory(system_memory)
+            return True
+            
+        # Get the current task and update status
+        current_task = tasks[current_idx]
+        self.log_internal_thought("MULTI_TASK", f"Processing multi-cycle task: {current_task}")
+        self.log_internal_thought("SEQUENCE", f"Sequence: {sequence['name']} ({current_idx+1}/{len(tasks)})")
+        
+        # For now, we just update status - actual processing happens in process_request
+        # The task execution is handled when the user makes their next request
+        sequence['status'] = 'in_progress'
+        self.memory_manager.update_system_memory(system_memory)
+        
+        return False
     
     def process_next_queue_task(self):
         """Process the next task in the processing queue"""

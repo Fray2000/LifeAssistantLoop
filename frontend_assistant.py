@@ -309,6 +309,83 @@ class FrontendAssistant:
                         
         return response
 
+    def generate_memory_confirmations(self, actions):
+        """Generate user-friendly confirmation messages for memory updates"""
+        confirmations = []
+        
+        for action in actions:
+            action_type = action.get('type', '')
+            args = action.get('args', {})
+            success = action.get('success', False)
+            
+            if not success:
+                continue
+                
+            if action_type == 'update_memory':
+                key = args.get('key', '')
+                value = args.get('value', '')
+                
+                # Generate friendly confirmation based on the key
+                if 'personal_info.profile.full_name' in key or 'name' in key.lower():
+                    confirmations.append(f"✓ Updated your name to {value}")
+                elif 'personal_info.profile.age' in key or 'age' in key.lower():
+                    confirmations.append(f"✓ Updated your age to {value}")
+                elif 'personal_info.appearance.height' in key or 'height' in key.lower():
+                    confirmations.append(f"✓ Updated your height to {value}")
+                elif 'personal_info.appearance.weight' in key or 'weight' in key.lower():
+                    confirmations.append(f"✓ Updated your weight to {value}")
+                elif 'health_and_wellness' in key:
+                    confirmations.append("✓ Updated your health information")
+                elif 'personal_info.contact' in key:
+                    confirmations.append("✓ Updated your contact information")
+                elif 'calendar_and_events' in key:
+                    confirmations.append("✓ Updated your calendar")
+                elif 'finance_and_banking' in key:
+                    confirmations.append("✓ Updated your financial information")
+                elif 'social_and_relationships' in key:
+                    confirmations.append("✓ Updated your social connections")
+                elif 'work_and_projects' in key:
+                    confirmations.append("✓ Updated your work information")
+                else:
+                    confirmations.append(f"✓ Updated {key}")
+                    
+            elif action_type == 'append_to_list':
+                key = args.get('key', '')
+                value = args.get('value', '')
+                if 'friends' in key.lower():
+                    confirmations.append(f"✓ Added {value} to your friends list")
+                elif 'family' in key.lower():
+                    confirmations.append(f"✓ Added {value} to your family")
+                elif 'tasks' in key.lower():
+                    confirmations.append(f"✓ Added task: {value}")
+                else:
+                    confirmations.append(f"✓ Added {value} to {key}")
+                    
+            elif action_type == 'remove_from_list':
+                key = args.get('key', '')
+                value = args.get('value', '')
+                if 'friends' in key.lower():
+                    confirmations.append(f"✓ Removed {value} from your friends list")
+                elif 'tasks' in key.lower():
+                    confirmations.append(f"✓ Removed task: {value}")
+                else:
+                    confirmations.append(f"✓ Removed {value} from {key}")
+                    
+            elif action_type == 'add_task':
+                task = args.get('task', '')
+                confirmations.append(f"✓ Added task: {task}")
+                
+            elif action_type == 'complete_task':
+                task = args.get('task', '')
+                confirmations.append(f"✓ Completed task: {task}")
+                
+            elif action_type == 'create_task_sequence':
+                sequence_name = args.get('sequence_name', '')
+                tasks = args.get('tasks', [])
+                confirmations.append(f"✓ Created task sequence '{sequence_name}' with {len(tasks)} steps")
+        
+        return confirmations
+
     def process_request(self, user_input):
         """Process a user request by coordinating with backend"""
         self.processing = True
@@ -396,19 +473,35 @@ class FrontendAssistant:
                         error_msg = f"I'm sorry, there was a problem processing your request: {response.get('content')}"
                         self.display_assistant_response(error_msg)
                         break
-                        
-                    # Get execution results from the backend
+                          # Get execution results from the backend
                     execution_results = response.get("content", "")
+                    actions = response.get("actions", [])
                     
                     # NEW: Process retrieved data for better display
                     response = self.process_retrieved_data(response)
                     
+                    # NEW: Generate confirmation messages for memory updates
+                    confirmations = self.generate_memory_confirmations(actions)
+                    
+                    # Display confirmations immediately for better UX
+                    if confirmations:
+                        print(f"\n{Colors.GREEN}{'='*40}{Colors.ENDC}")
+                        print(f"{Colors.GREEN}✓ Actions Completed:{Colors.ENDC}")
+                        for confirmation in confirmations:
+                            print(f"  {Colors.GREEN}{confirmation}{Colors.ENDC}")
+                        print(f"{Colors.GREEN}{'='*40}{Colors.ENDC}")
+                    
                     # Generate user-friendly output based on backend results
                     print(f"{Colors.YELLOW}Generating response...{Colors.ENDC}")
+                    
+                    # Include confirmations in the response generation
+                    response_with_confirmations = response.copy()
+                    response_with_confirmations['confirmations'] = confirmations
+                    
                     human_friendly_output = self.user_model.generate_output(
                         execution_results,
                         self.memory_manager.get_user_memory(),
-                        response  # Pass the processed response
+                        response_with_confirmations  # Pass the enhanced response
                     )
                     
                     # Display debug info for final output generation
