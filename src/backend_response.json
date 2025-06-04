@@ -1,26 +1,47 @@
 {
-  "id": "34e6c36c-0503-449a-a88c-7f5f879857b8",
+  "id": "a5bef40a-77c8-4bcf-8168-edb4aeea4357",
   "status": "success",
-  "content": "Generated 2 actions to fulfill your request.",
+  "content": "Generated 3 actions to fulfill your request.",
   "actions": [
     {
-      "type": "write_file",
+      "type": "retrieve_data",
       "args": {
-        "path": "./user_introduction.txt",
-        "content": "{\"name\": \"Francesco\", \"age\": 24}"
+        "data_type": "memory",
+        "section": "personal.calendat"
       },
-      "result": "Unknown action: write_file",
+      "result": {
+        "type": "error",
+        "message": "Path personal.calendat not found in memory"
+      },
       "success": true
     },
     {
-      "type": "add_task",
+      "type": "append_to_list",
       "args": {
-        "task": "",
-        "priority": ""
+        "key": "personal.calendat",
+        "value": "{\"date\": \"next Monday\", \"time\": \"10 AM\"}"
       },
-      "result": "Added task: ",
+      "result": "Appended {\"date\": \"next Monday\", \"time\": \"10 AM\"} to personal.calendat",
+      "success": true
+    },
+    {
+      "type": "retrieve_data",
+      "args": {
+        "data_type": "memory",
+        "section": "personal.calendat",
+        "optional_context": {
+          "with_family": false
+        }
+      },
+      "result": {
+        "type": "memory_data",
+        "path": "personal.calendat",
+        "data": [
+          "{\"date\": \"next Monday\", \"time\": \"10 AM\"}"
+        ]
+      },
       "success": true
     }
   ],
-  "timestamp": "2025-06-03T15:11:37.066172"
+  "timestamp": "2025-06-04T10:05:32.933215"
 }

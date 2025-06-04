@@ -279,6 +279,36 @@ class FrontendAssistant:
                 
         return None
     
+    def process_retrieved_data(self, response):
+        """Process retrieved data to make it more readable before displaying to user"""
+        if not response or not isinstance(response, dict):
+            return response
+            
+        actions = response.get('actions', [])
+        for action in actions:
+            if action.get('type') == 'retrieve_data' and 'result' in action:
+                result = action.get('result', {})
+                if not isinstance(result, dict):
+                    continue
+                
+                data = result.get('data')
+                
+                # Handle birthday preferences specially
+                if (action.get('args', {}).get('section') == 'personal.birthday_preferences' or 
+                    action.get('args', {}).get('section') == 'birthday_preferences') and isinstance(data, str):
+                    try:
+                        # Try to parse JSON-like string
+                        if data.startswith('{') and data.endswith('}'):
+                            # Replace single quotes with double quotes
+                            import ast
+                            prefs = ast.literal_eval(data)
+                            # Store formatted data
+                            result['formatted_data'] = prefs
+                    except Exception as e:
+                        self.display_debug_info(f"Error parsing JSON-like string", str(e))
+                        
+        return response
+
     def process_request(self, user_input):
         """Process a user request by coordinating with backend"""
         self.processing = True
@@ -370,11 +400,15 @@ class FrontendAssistant:
                     # Get execution results from the backend
                     execution_results = response.get("content", "")
                     
+                    # NEW: Process retrieved data for better display
+                    response = self.process_retrieved_data(response)
+                    
                     # Generate user-friendly output based on backend results
                     print(f"{Colors.YELLOW}Generating response...{Colors.ENDC}")
                     human_friendly_output = self.user_model.generate_output(
                         execution_results,
-                        self.memory_manager.get_user_memory()
+                        self.memory_manager.get_user_memory(),
+                        response  # Pass the processed response
                     )
                     
                     # Display debug info for final output generation

@@ -183,6 +183,148 @@ class FunctionExecutor:
                 return f"Updated {key} to {value}"
             return "Error: key and value required for update_nested"
         
+        elif action_type == 'retrieve_data':
+            # Retrieve specific data from memory or tasks
+            data_type = args.get('data_type', 'memory')
+            section = args.get('section')
+            key = args.get('key')
+            query = args.get('query')
+            
+            # Special case handling for common fields that might be requested without full path
+            common_fields = {
+                "name": "personal.name", 
+                "full_name": "personal.full_name",
+                "age": "personal.age",
+                "height": "personal.height",
+                "weight": "personal.weight",
+                "birthday_preferences": "personal.birthday_preferences",
+                "friends": "personal.friends"
+            }
+            
+            if section in common_fields:
+                section = common_fields[section]
+            
+            if data_type == 'memory':
+                user_mem = memory_manager.get_user_memory()
+                
+                # Handle direct field access first (no section or with "personal." prefix)
+                if section:
+                    # If section contains dots, it's a nested path
+                    if '.' in section:
+                        parts = section.split('.')
+                        curr = user_mem
+                        for p in parts:
+                            if p in curr:
+                                curr = curr[p]
+                            else:
+                                return {
+                                    "type": "error",
+                                    "message": f"Path {section} not found in memory"
+                                }
+                        return {
+                            "type": "memory_data",
+                            "path": section,
+                            "data": curr
+                        }
+                    # Otherwise check top-level sections first
+                    elif section in user_mem:
+                        if key and key in user_mem[section]:
+                            return {
+                                "type": "memory_data",
+                                "section": section,
+                                "key": key,
+                                "data": user_mem[section][key]
+                            }
+                        else:
+                            return {
+                                "type": "memory_data",
+                                "section": section,
+                                "data": user_mem[section]
+                            }
+                    # Check if it's a direct field in personal section
+                    elif section in user_mem.get('personal', {}):
+                        return {
+                            "type": "memory_data", 
+                            "section": "personal",
+                            "key": section,
+                            "data": user_mem['personal'][section]
+                        }
+                    else:
+                        # Try to find it anywhere in memory
+                        for sect_name, sect_data in user_mem.items():
+                            if isinstance(sect_data, dict) and section in sect_data:
+                                return {
+                                    "type": "memory_data",
+                                    "section": sect_name,
+                                    "key": section,
+                                    "data": sect_data[section]
+                                }
+                        
+                        return {
+                            "type": "error",
+                            "message": f"Section '{section}' not found in memory"
+                        }
+                
+                # Search by query across all sections
+                elif query:
+                    results = {}
+                    query_lower = query.lower()
+                    
+                    for section_name, section_data in user_mem.items():
+                        if isinstance(section_data, dict):
+                            for key_name, value in section_data.items():
+                                if (query_lower in key_name.lower() or 
+                                    (isinstance(value, str) and query_lower in value.lower())):
+                                    if section_name not in results:
+                                        results[section_name] = {}
+                                    results[section_name][key_name] = value
+                                        
+                    return {
+                        "type": "memory_data", 
+                        "query": query,
+                        "data": results
+                    }
+                # Return entire memory if no specific section/query
+                else:
+                    return {
+                        "type": "memory_data",
+                        "data": user_mem
+                    }
+                    
+            elif data_type == 'tasks':
+                # Handle tasks retrieval
+                file_path = self._resolve_path(args.get('file', 'data-backend/tasks.md'))
+                if os.path.exists(file_path):
+                    with open(file_path, 'r') as f:
+                        tasks_content = f.read()
+                    
+                    # Filter by query if provided
+                    if query:
+                        filtered_lines = []
+                        for line in tasks_content.split('\n'):
+                            if query.lower() in line.lower():
+                                filtered_lines.append(line)
+                        return {
+                            "type": "tasks_data",
+                            "query": query,
+                            "data": '\n'.join(filtered_lines)
+                        }
+                    else:
+                        return {
+                            "type": "tasks_data",
+                            "data": tasks_content
+                        }
+                else:
+                    return {
+                        "type": "error",
+                        "message": f"Task file {file_path} not found"
+                    }
+                    
+            else:
+                return {
+                    "type": "error",
+                    "message": f"Unknown data type: {data_type}"
+                }
         else:
             return f"Unknown action: {action_type}"
     

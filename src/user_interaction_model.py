@@ -93,20 +93,20 @@ class UserInteractionModel:
         })
         
         return thoughts, directives
-    
-    def generate_output(self, execution_results, user_memory):
+      
+    def generate_output(self, execution_results, user_memory, full_response=None):
         """
         Generate a user-friendly response based on execution results
         
         Args:
             execution_results: Results from executing tasks
             user_memory: User-facing memory for context
+            full_response: Full processed response object with any formatted data
             
         Returns:
             user_friendly_response: Response formatted for the user
-        """
-        # Build prompt for response generation
-        prompt = self.build_output_prompt(execution_results, user_memory)
+        """        # Build prompt for response generation
+        prompt = self.build_output_prompt(execution_results, user_memory, full_response)
         
         # Query model for response
         try:
@@ -158,12 +158,27 @@ class UserInteractionModel:
         """
         # Hidden system prompt - guides the model but isn't visible to user
         system_prompt = """You are the frontend component of a dual-model Life Assistant system, powered by Llama3.2.
-Your job is to understand what the user wants and convert it into structured directives that can be executed by the backend system.
-Focus on being helpful, accurate, and understanding the user's intent.
-```
+        Your job is to understand what the user wants and convert it into structured directives that can be executed by the backend system.
+        Focus on being helpful, accurate, and understanding the user's intent.
+        Include only relevant sections based on the user's request.
 
-Include only relevant sections based on the user's request.
-"""
+        Available actions include:
+        - update_memory: Store information in user memory
+        - append_to_list: Add an item to a list in memory (e.g., friends, contracts)
+        - remove_from_list: Remove an item from a list in memory
+        - update_nested: Update a nested field in memory
+        - retrieve_data: Request specific information from memory or tasks
+        - Use when the user asks about previously stored information
+        - Always use proper paths for common personal fields:
+            - For name, use "personal.name" or "personal.full_name" 
+            - For birthday preferences, use "personal.birthday_preferences"
+            - For friends, use "personal.friends"
+            - For health info, use "personal.health_conditions"
+        - For sections without specific fields, use just the section name
+
+        When responding to users, convert their natural language requests into appropriate backend actions.
+        When users ask about personal information, always use retrieve_data with the proper path.
+        """
         
         # Format the conversation history to provide context
         history = ""
@@ -201,23 +216,34 @@ Include only relevant sections based on the user's request.
             
         complete_prompt += f"Current Request: {human_input}\n\nYour response (thoughts followed by JSON directives):"
         
-        return complete_prompt
-
-    def build_output_prompt(self, execution_results, user_memory):
+        return complete_prompt    
+    
+    def build_output_prompt(self, execution_results, user_memory, full_response=None):
         """
         Build a prompt for generating a user-friendly response
         
         Args:
             execution_results: Results of task execution
             user_memory: User-facing memory
+            full_response: Full response object with processed data
             
         Returns:
             prompt: The complete prompt for response generation
-        """        # Hidden system prompt
+        """
+        # Hidden system prompt
         system_prompt = """You are the frontend component of a dual-model Life Assistant system, powered by Llama3.2.
 Your job is to take the execution results from the backend system and present them to the user in a friendly, helpful way.
 Be concise, clear, and informative. Avoid technical jargon unless the user is technical.
 Focus on what the user cares about most - did their request get fulfilled? What were the results?
+
+When displaying information retrieved from memory:
+- For simple values (numbers, plain text), show them in a natural way: "Your height is 1.94 meters"
+- For birthday preferences or JSON-formatted strings:
+  - If it looks like this: "{'occasion': 'birthdays', 'location': 'beach', 'with_family': true}"
+  - Parse and present it nicely: "You prefer to celebrate birthdays at the beach with your family"
+- For lists (like friends), present them in a readable format: "Your friends include John, Sarah, and Mike"
+- If there's an error with data retrieval, apologize and explain simply what happened
+
 If there were any issues or errors, explain them simply and suggest alternatives.
 Be conversational and engaging, but stay focused on the user's original request.
 """
@@ -243,6 +269,19 @@ Be conversational and engaging, but stay focused on the user's original request.
                     else:
                         history += f"Assistant: {entry['content']}\n"
         
+        # Get retrieved data from response if available
+        retrieved_data = ""
+        if full_response and isinstance(full_response, dict):
+            for action in full_response.get('actions', []):
+                if action.get('type') == 'retrieve_data' and 'result' in action:
+                    result = action.get('result', {})
+                    if isinstance(result, dict):
+                        # Check if we have formatted data first
+                        if 'formatted_data' in result:
+                            retrieved_data += f"Retrieved data (formatted): {result['formatted_data']}\n"
+                        elif 'data' in result:
+                            retrieved_data += f"Retrieved data: {result['data']}\n"
+        
         # Assemble the complete prompt
         complete_prompt = f"{system_prompt}\n\n"
         
@@ -251,6 +290,9 @@ Be conversational and engaging, but stay focused on the user's original request.
             
         complete_prompt += f"Original User Request: {original_request}\n\n"
         
+        if retrieved_data:
+            complete_prompt += f"Retrieved Information:\n{retrieved_data}\n\n"
+            
         if execution_results:
             complete_prompt += f"Execution Results: {execution_results}\n\n"
         else:

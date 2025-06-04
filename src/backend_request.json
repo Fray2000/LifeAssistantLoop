@@ -1,12 +1,17 @@
 {
-  "id": "34e6c36c-0503-449a-a88c-7f5f879857b8",
+  "id": "a5bef40a-77c8-4bcf-8168-edb4aeea4357",
   "type": "command",
   "content": {
-    "userIntroduction": {
-      "name": "Francesco",
-      "age": 24
+    "action": "append_to_list",
+    "path": "personal.calendat",
+    "context": {
+      "date": "next Monday",
+      "time": "10 AM"
+    },
+    "optional_context": {
+      "with_family": true
     }
   },
-  "timestamp": "2025-06-03T15:10:53.568443",
+  "timestamp": "2025-06-04T10:04:16.400155",
   "response_required": true
 }
