@@ -1,0 +1,98 @@
+{
+  "personal_info": {
+    "profile": {
+      "full_name": "",
+      "preferred_name": "",
+      "age": null,
+      "date_of_birth": ""
+    },
+    "contact": {
+      "phone": "",
+      "email": "",
+      "address": ""
+    },
+    "appearance": {
+      "height": "",
+      "weight": ""
+    },
+    "preferences": {
+      "communication_style": "",
+      "interests": [],
+      "goals": []
+    }
+  },
+  "health_and_wellness": {
+    "medical_conditions": [],
+    "medications": [],
+    "doctors": {},
+    "fitness": {
+      "goals": [],
+      "activities": []
+    },
+    "diet": {
+      "restrictions": [],
+      "preferences": []
+    },
+    "mental_health": {
+      "mood_tracking": [],
+      "stress_management": []
+    }
+  },
+  "calendar_and_events": {
+    "events": [],
+    "reminders": [],
+    "availability": {}
+  },
+  "finance_and_banking": {
+    "accounts": {},
+    "transactions": [],
+    "budgets": {},
+    "bills": [],
+    "investments": {},
+    "contracts": []
+  },
+  "social_and_relationships": {
+    "contacts": {
+      "friends": [],
+      "family": {},
+      "colleagues": []
+    },
+    "social_events": [],
+    "friend_groups": {}
+  },
+  "work_and_projects": {
+    "current_job": {},
+    "projects": [],
+    "tasks": [],
+    "completed_tasks": [],
+    "goals": [],
+    "documents": []
+  },
+  "knowledge_and_learning": {
+    "skills": [],
+    "education": {},
+    "courses": [],
+    "certifications": [],
+    "travel": {
+      "places_visited": [],
+      "travel_plans": []
+    },
+    "vehicles": [],
+    "subscriptions": []
+  },
+  "devices_and_smart_home": {
+    "devices": {},
+    "smart_home_routines": []
+  },
+  "system_state": {
+    "last_interaction_timestamp": "2025-06-05T15:31:36.244281",
+    "active_mode": "assistant",
+    "current_focus": "general_assistance"
+  },
+  "assistant_memory": {
+    "conversation_history": [],
+    "learned_patterns": {},
+    "user_feedback": []
+  },
+  "last_interaction": "2025-06-05T15:31:36.244261"
+}

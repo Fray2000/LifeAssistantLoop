@@ -1,0 +1,32 @@
+{
+  "constant_tasks": [],
+  "processing_queue": [],
+  "execution_history": [],
+  "backend_state": {
+    "last_execution": "2025-06-05T13:49:45.102143",
+    "execution_count": 0,
+    "active_tasks": []
+  },
+  "next_cycle_plan": [],
+  "multi_cycle_tasks": {
+    "active_sequences": {
+      "Email_Birthday_Greetings_1749124185": {
+        "name": "Email Birthday Greetings",
+        "description": "Write birthday greeting emails for friends",
+        "tasks": [
+          "Draft email for John",
+          "Draft email for Sarah",
+          "Draft email for Michael"
+        ],
+        "created_at": "2025-06-05T13:49:45.099183",
+        "status": "pending",
+        "priority": "high",
+        "current_task_index": 0,
+        "completed_tasks": [],
+        "failed_tasks": []
+      }
+    },
+    "completed_sequences": {},
+    "current_sequence_id": "Email_Birthday_Greetings_1749124185"
+  }
+}

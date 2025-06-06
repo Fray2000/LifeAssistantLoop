@@ -1,0 +1,10 @@
+{
+  "id": "c0cc16d2-8ab3-4234-a299-d9cbacd5869e",
+  "type": "command",
+  "content": {
+    "action": "retrieve_data",
+    "path": "personal.gateaux"
+  },
+  "timestamp": "2025-06-05T15:32:21.014628",
+  "response_required": true
+}

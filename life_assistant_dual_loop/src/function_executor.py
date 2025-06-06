@@ -1,0 +1,499 @@
+import os
+import json
+import datetime
+import time
+from .functions import FUNCTIONS
+
+class FunctionExecutor:
+    def __init__(self):
+        pass
+        
+    def execute(self, action, editor, memory_manager):
+        """Execute a user action with appropriate function"""
+        action_type = action.get('type')
+        args = action.get('args', {})
+        
+        # Basic built-in actions
+        if action_type in FUNCTIONS:
+            result = FUNCTIONS[action_type](**args)
+            return result
+            
+        elif action_type == 'edit_markdown':
+            file_path = self._resolve_path(args['file'])
+            new_content = args['content']
+            editor.apply_edit(file_path, new_content)
+            return f"Updated {os.path.basename(file_path)}"
+        
+        elif action_type == 'add_task':
+            task = args['task']
+            file_path = self._resolve_path(args.get('file', 'src/tasks.md'))
+            
+            # Read current tasks
+            tasks = editor.read_markdown(file_path)
+            if '# Tasks' not in tasks:
+                tasks = "# Tasks\n\n"
+                
+            # Add task if it doesn't exist
+            if f"- [ ] {task}" not in tasks:
+                tasks += f"- [ ] {task}\n"
+                editor.apply_edit(file_path, tasks)
+                
+                # Update memory with new structure
+                user_mem = memory_manager.get_user_memory()
+                work_tasks = user_mem.get('work_and_projects', {}).get('tasks', [])
+                if task not in work_tasks:
+                    work_tasks.append(task)
+                    user_mem.setdefault('work_and_projects', {})['tasks'] = work_tasks
+                    memory_manager.update_user_memory(user_mem)
+                
+            return f"Added task: {task}"
+        
+        elif action_type == 'complete_task':
+            task = args['task']
+            file_path = self._resolve_path(args.get('file', 'src/tasks.md'))
+            
+            tasks = editor.read_markdown(file_path)
+            if f"- [ ] {task}" in tasks:
+                tasks = tasks.replace(f"- [ ] {task}", f"- [x] {task}")
+                editor.apply_edit(file_path, tasks)
+                
+                # Update user memory with new structure
+                user_mem = memory_manager.get_user_memory()
+                completed_tasks = user_mem.get('work_and_projects', {}).get('completed_tasks', [])
+                if task not in completed_tasks:
+                    completed_tasks.append(task)
+                    user_mem.setdefault('work_and_projects', {})['completed_tasks'] = completed_tasks
+                    memory_manager.update_user_memory(user_mem)
+                    
+                return f"Completed task: {task}"
+                
+            return f"Task not found: {task}"
+            
+        elif action_type == 'list_tasks':
+            file_path = self._resolve_path(args.get('file', 'src/tasks.md'))
+            tasks = editor.read_markdown(file_path)
+            return {"tasks": tasks}
+            
+        elif action_type == 'remember':
+            # Store information in user memory
+            key = args.get('key')
+            value = args.get('value')
+            
+            if key:
+                memory_update = {}
+                memory_update[key] = value
+                memory_manager.update_user_memory(memory_update)
+                return f"Remembered information under '{key}'"
+            else:
+                return "Error: No key provided for remember action"
+        
+        elif action_type == 'update_memory':
+            # Enhanced: Support dot notation for new comprehensive memory schema
+            key = args.get('key')
+            value = args.get('value')
+            memory_type = args.get('memory_type', 'user')
+            if memory_type == 'user' and key:
+                user_mem = memory_manager.get_user_memory()
+                # Support dot notation (e.g., personal_info.profile.full_name)
+                if '.' in key:
+                    parts = key.split('.')
+                    curr = user_mem
+                    for p in parts[:-1]:
+                        curr = curr.setdefault(p, {})
+                    curr[parts[-1]] = value
+                    
+                    # Print debug info
+                    print(f"DEBUG: Updated memory path {key} to {value}")
+                else:
+                    # Map simple keys to new memory structure
+                    key_mappings = {
+                        'name': 'personal_info.profile.full_name',
+                        'full_name': 'personal_info.profile.full_name',
+                        'age': 'personal_info.profile.age',
+                        'height': 'personal_info.appearance.height',
+                        'weight': 'personal_info.appearance.weight',
+                        'phone': 'personal_info.contact.phone_numbers',
+                        'email': 'personal_info.contact.email_addresses',
+                        'address': 'personal_info.contact.mailing_address',
+                        'birthday': 'personal_info.profile.date_of_birth'
+                    }
+                    
+                    if key in key_mappings:
+                        # Use the mapped path
+                        mapped_path = key_mappings[key]
+                        print(f"DEBUG: Mapped '{key}' to '{mapped_path}'")
+                        parts = mapped_path.split('.')
+                        curr = user_mem
+                        for p in parts[:-1]:
+                            curr = curr.setdefault(p, {})
+                        curr[parts[-1]] = value
+                    else:
+                        # Default to personal_info.profile for unmapped keys
+                        user_mem.setdefault('personal_info', {}).setdefault('profile', {})[key] = value
+                        print(f"DEBUG: Added unmapped key '{key}' to personal_info.profile")
+                        
+                memory_manager.update_user_memory(user_mem)
+                return f"User memory updated: {key} = {value}"
+            elif memory_type == 'system' and key:
+                # Similar logic for system memory if needed
+                system_mem = memory_manager.get_system_memory()
+                if '.' in key:
+                    parts = key.split('.')
+                    curr = system_mem
+                    for p in parts[:-1]:
+                        curr = curr.setdefault(p, {})
+                    curr[parts[-1]] = value
+                else:
+                    system_mem[key] = value
+                memory_manager.update_system_memory(system_mem)
+                return f"System memory updated: {key} = {value}"
+            else:
+                memory_manager.update_user_memory(args)
+                return "Memory updated"
+        
+        elif action_type == 'append_to_list':
+            # Append a value to a list in user memory (e.g., friends, contracts)
+            key = args.get('key')
+            value = args.get('value')
+            if key and value is not None:
+                user_mem = memory_manager.get_user_memory()
+                # Support nested keys like 'personal.friends'
+                parts = key.split('.')
+                curr = user_mem
+                for p in parts[:-1]:
+                    curr = curr.setdefault(p, {})
+                lst = curr.setdefault(parts[-1], [])
+                if value not in lst:
+                    lst.append(value)
+                    memory_manager.update_user_memory(user_mem)
+                    return f"Appended {value} to {key}"
+                else:
+                    return f"Value {value} already in {key}"
+            return "Error: key and value required for append_to_list"
+
+        elif action_type == 'remove_from_list':
+            # Remove a value from a list in user memory
+            key = args.get('key')
+            value = args.get('value')
+            if key and value is not None:
+                user_mem = memory_manager.get_user_memory()
+                parts = key.split('.')
+                curr = user_mem
+                for p in parts[:-1]:
+                    curr = curr.setdefault(p, {})
+                lst = curr.setdefault(parts[-1], [])
+                if value in lst:
+                    lst.remove(value)
+                    memory_manager.update_user_memory(user_mem)
+                    return f"Removed {value} from {key}"
+                else:
+                    return f"Value {value} not found in {key}"
+            return "Error: key and value required for remove_from_list"
+
+        elif action_type == 'update_nested':
+            # Update a nested field in user memory (e.g., insurance.policy_number)
+            key = args.get('key')
+            value = args.get('value')
+            if key and value is not None:
+                user_mem = memory_manager.get_user_memory()
+                parts = key.split('.')
+                curr = user_mem
+                for p in parts[:-1]:
+                    curr = curr.setdefault(p, {})
+                curr[parts[-1]] = value
+                memory_manager.update_user_memory(user_mem)
+                return f"Updated {key} to {value}"
+            return "Error: key and value required for update_nested"
+        
+        elif action_type == 'retrieve_data':
+            # Retrieve specific data from memory or tasks
+            data_type = args.get('data_type', 'memory')
+            section = args.get('section')
+            key = args.get('key')   # Also allow 'key' parameter for backward compatibility
+            path = args.get('path') # New parameter for direct path access
+            query = args.get('query')
+            
+            # If path is provided, use it (direct dot notation access)
+            if path and not section:
+                section = path
+            
+            # If key is provided but not section, use key as section
+            if key and not section:
+                section = key
+            
+            # Special case handling for common fields that might be requested without full path
+            common_fields = {
+                "name": "personal_info.profile.full_name", 
+                "full_name": "personal_info.profile.full_name",
+                "age": "personal_info.profile.age",
+                "height": "personal_info.appearance.height",
+                "weight": "personal_info.appearance.weight",
+                "phone": "personal_info.contact.phone_numbers",
+                "email": "personal_info.contact.email_addresses",
+                "address": "personal_info.contact.mailing_address",
+                "friends": "social_and_relationships.contacts",
+                "family": "social_and_relationships.family_members",
+                "tasks": "work_and_projects.tasks",
+                "health": "health_and_wellness",
+                "medical": "health_and_wellness.medical_conditions"
+            }
+            
+            if section in common_fields:
+                section = common_fields[section]
+                print(f"DEBUG: Mapped section '{key}' to '{section}'")
+            
+            if data_type == 'memory':
+                user_mem = memory_manager.get_user_memory()
+                
+                # Handle direct field access first (no section or with dot notation)
+                if section:
+                    print(f"DEBUG: Retrieving section '{section}'")
+                    # If section contains dots, it's a nested path
+                    if '.' in section:
+                        parts = section.split('.')
+                        curr = user_mem
+                        found = True
+                        
+                        for p in parts:
+                            if isinstance(curr, dict) and p in curr:
+                                curr = curr[p]
+                            else:
+                                found = False
+                                break
+                        
+                        if found:
+                            return {
+                                "type": "memory_data",
+                                "path": section,
+                                "data": curr
+                            }
+                        else:
+                            print(f"DEBUG: Path '{section}' not found in memory")
+                            return {
+                                "type": "error",
+                                "message": f"Path {section} not found in memory"
+                            }
+                    # Otherwise check top-level sections first
+                    elif section in user_mem:
+                        if key and isinstance(user_mem[section], dict) and key in user_mem[section]:
+                            return {
+                                "type": "memory_data",
+                                "section": section,
+                                "key": key,
+                                "data": user_mem[section][key]
+                            }
+                        else:
+                            return {
+                                "type": "memory_data",
+                                "section": section,
+                                "data": user_mem[section]
+                            }
+                        
+                    else:
+                        # Search through all sections for the key
+                        found_data = []
+                        for sect_name, sect_data in user_mem.items():
+                            if isinstance(sect_data, dict):
+                                # Search recursively in nested structures
+                                def search_nested(data, path=""):
+                                    results = []
+                                    if isinstance(data, dict):
+                                        for k, v in data.items():
+                                            current_path = f"{path}.{k}" if path else k
+                                            if k == section or section.lower() in k.lower():
+                                                results.append((current_path, v))
+                                            if isinstance(v, dict):
+                                                results.extend(search_nested(v, current_path))
+                                    return results
+                                
+                                nested_results = search_nested(sect_data, sect_name)
+                                found_data.extend(nested_results)
+                        
+                        if found_data:
+                            return {
+                                "type": "memory_data",
+                                "section": section,
+                                "data": dict(found_data) if len(found_data) > 1 else found_data[0][1]
+                            }
+                        else:
+                            return {
+                                "type": "error",
+                                "message": f"Section '{section}' not found in memory"
+                            }
+                
+                # Search by query across all sections
+                elif query:
+                    results = {}
+                    query_lower = query.lower()
+                    
+                    def search_recursive(data, path=""):
+                        matches = {}
+                        if isinstance(data, dict):
+                            for key_name, value in data.items():
+                                current_path = f"{path}.{key_name}" if path else key_name
+                                if (query_lower in key_name.lower() or 
+                                    (isinstance(value, str) and query_lower in value.lower())):
+                                    matches[current_path] = value
+                                elif isinstance(value, dict):
+                                    nested_matches = search_recursive(value, current_path)
+                                    matches.update(nested_matches)
+                                elif isinstance(value, list):
+                                    for i, item in enumerate(value):
+                                        if isinstance(item, str) and query_lower in item.lower():
+                                            matches[f"{current_path}[{i}]"] = item
+                        return matches
+                    
+                    all_matches = search_recursive(user_mem)
+                                        
+                    return {
+                        "type": "memory_data", 
+                        "query": query,
+                        "data": all_matches
+                    }
+                # Return entire memory if no specific section/query
+                else:
+                    return {
+                        "type": "memory_data",
+                        "data": user_mem
+                    }
+                    
+            elif data_type == 'tasks':
+                # Handle tasks retrieval
+                file_path = self._resolve_path(args.get('file', 'data-backend/tasks.md'))
+                if os.path.exists(file_path):
+                    with open(file_path, 'r') as f:
+                        tasks_content = f.read()
+                    
+                    # Filter by query if provided
+                    if query:
+                        filtered_lines = []
+                        for line in tasks_content.split('\n'):
+                            if query.lower() in line.lower():
+                                filtered_lines.append(line)
+                        return {
+                            "type": "tasks_data",
+                            "query": query,
+                            "data": '\n'.join(filtered_lines)
+                        }
+                    else:
+                        return {
+                            "type": "tasks_data",
+                            "data": tasks_content
+                        }
+                else:
+                    return {
+                        "type": "error",
+                        "message": f"Task file {file_path} not found"
+                    }
+                    
+            else:
+                return {
+                    "type": "error",
+                    "message": f"Unknown data type: {data_type}"
+                }
+        
+        elif action_type == 'add_subtask':
+            # Add a subtask to an existing task
+            parent_task_id = args.get('parent_task_id')
+            description = args.get('description')
+            priority = args.get('priority', 'medium')
+            
+            if not parent_task_id or not description:
+                return "Error: parent_task_id and description are required for add_subtask"
+            
+            # Find the parent task in backend memory
+            backend_mem = memory_manager.get_backend_memory()
+            processing_queue = backend_mem.get('processing_queue', [])
+            
+            # Look for the parent task
+            found = False
+            for i, task_entry in enumerate(processing_queue):
+                task = task_entry.get('task', {})
+                if isinstance(task, dict) and task.get('id') == parent_task_id:
+                    # Initialize subtasks list if not present
+                    if 'subtasks' not in task:
+                        task['subtasks'] = []
+                    
+                    # Add the new subtask
+                    subtask = {
+                        'description': description,
+                        'priority': priority,
+                        'status': 'pending',
+                        'created_at': datetime.datetime.now().isoformat()
+                    }
+                    task['subtasks'].append(subtask)
+                    found = True
+                    memory_manager.update_backend_memory({'processing_queue': processing_queue})
+                    break
+            
+            if found:
+                return f"Added subtask to task {parent_task_id}: {description}"
+            else:
+                return f"Error: Parent task {parent_task_id} not found"
+
+        elif action_type == 'create_task_sequence':
+            # Create a multi-cycle task sequence for complex operations
+            sequence_name = args.get('sequence_name')
+            tasks = args.get('tasks', [])
+            description = args.get('description', '')
+            priority = args.get('priority', 'medium')
+            
+            if not sequence_name or not tasks:
+                return "Error: sequence_name and tasks are required for create_task_sequence"
+            
+            # Update both system and backend memory with the new task sequence
+            sequence_id = f"{sequence_name.replace(' ', '_')}_{int(time.time())}"
+            
+            # Generate the sequence object
+            sequence_obj = {
+                'name': sequence_name,
+                'description': description,
+                'tasks': tasks,
+                'created_at': datetime.datetime.now().isoformat(),
+                'status': 'pending',
+                'priority': priority,
+                'current_task_index': 0,
+                'completed_tasks': [],
+                'failed_tasks': []
+            }
+            
+            # Update system memory
+            system_mem = memory_manager.get_system_memory()
+            multi_cycle_sys = system_mem.setdefault('multi_cycle_tasks', {})
+            active_sequences_sys = multi_cycle_sys.setdefault('active_sequences', {})
+            active_sequences_sys[sequence_id] = sequence_obj
+            
+            # Set as current sequence if none active
+            if not multi_cycle_sys.get('current_sequence_id'):
+                multi_cycle_sys['current_sequence_id'] = sequence_id
+            
+            memory_manager.update_system_memory(system_mem)
+            
+            # Also update backend memory if available
+            try:
+                backend_mem = memory_manager.get_backend_memory()
+                if backend_mem:
+                    multi_cycle_back = backend_mem.setdefault('multi_cycle_tasks', {})
+                    active_sequences_back = multi_cycle_back.setdefault('active_sequences', {})
+                    active_sequences_back[sequence_id] = sequence_obj
+                    
+                    # Set as current sequence if none active
+                    if not multi_cycle_back.get('current_sequence_id'):
+                        multi_cycle_back['current_sequence_id'] = sequence_id
+                    
+                    memory_manager.update_backend_memory(backend_mem)
+            except Exception as e:
+                print(f"Warning: Could not update backend memory: {e}")
+            
+            print(f"DEBUG: Created task sequence '{sequence_name}' with {len(tasks)} tasks (ID: {sequence_id})")
+            return f"Created task sequence '{sequence_name}' with {len(tasks)} tasks (ID: {sequence_id})"
+
+        else:
+            return f"Unknown action: {action_type}"
+    
+    def _resolve_path(self, file_path):
+        """Convert relative paths to absolute paths"""
+        if not os.path.isabs(file_path):
+            base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+            return os.path.join(base_dir, file_path)
+        return file_path

@@ -1,0 +1,180 @@
+{
+  "personal": {},
+  "tasks": {
+    "completed": [],
+    "in_progress": [],
+    "priorities": []
+  },
+  "knowledge": {
+    "learned_patterns": {},
+    "user_preferences": {},
+    "important_dates": {}
+  },
+  "notes": [],
+  "system": {
+    "version": "2.0.0",
+    "last_startup": "2025-06-04T11:12:39.575242",
+    "cycles_completed": 0,
+    "features_implemented": [
+      "split-memory"
+    ],
+    "frontend_last_startup": "2025-06-04T11:12:39.575328"
+  },
+  "self_improvement": {
+    "proposed_enhancements": [],
+    "successful_changes": [],
+    "failed_attempts": []
+  },
+  "internal_state": {},
+  "technical_knowledge": {},
+  "system_state": {
+    "last_interaction_timestamp": "2025-06-05T13:49:45.100805",
+    "active_mode": "normal",
+    "current_focus_task_id": null
+  },
+  "personal_info": {
+    "profile": {
+      "full_name": "Francesco Leo",
+      "nicknames": [],
+      "date_of_birth": null,
+      "age": null,
+      "gender": null,
+      "pronouns": null,
+      "languages_spoken": [
+        "English"
+      ]
+    },
+    "contact": {
+      "email_addresses": [],
+      "phone_numbers": [],
+      "mailing_address": {
+        "street": null,
+        "city": null,
+        "state_province": null,
+        "postal_code": null,
+        "country": null
+      },
+      "emergency_contacts": []
+    },
+    "appearance": {
+      "height": null,
+      "weight": null,
+      "eye_color": null,
+      "hair_color": null
+    },
+    "preferences": {
+      "communication_style": "direct",
+      "theme": "dark",
+      "notification_preferences": {
+        "email": true,
+        "sms": false,
+        "push": true
+      },
+      "privacy_settings": {
+        "data_sharing": "minimal",
+        "anonymize_data": true
+      }
+    }
+  },
+  "health_and_wellness": {
+    "medical_conditions": [],
+    "allergies_sensitivities": [],
+    "medications": [],
+    "doctors_specialists": [],
+    "insurance_information": [],
+    "fitness": {
+      "activity_log": [],
+      "goals": [],
+      "preferred_activities": [],
+      "wearable_device_id": null
+    },
+    "diet_nutrition": {
+      "dietary_restrictions": [],
+      "preferences": [],
+      "meal_log": [],
+      "water_intake_goal_ml": 2000
+    },
+    "mental_health": {
+      "mood_log": [],
+      "stress_triggers": [],
+      "coping_mechanisms": [],
+      "therapist_id": null
+    }
+  },
+  "calendar_and_events": {
+    "events": [],
+    "reminders": [],
+    "availability_preferences": {
+      "working_hours": {
+        "start": "09:00",
+        "end": "17:00",
+        "days": [
+          "Mon",
+          "Tue",
+          "Wed",
+          "Thu",
+          "Fri"
+        ]
+      },
+      "preferred_meeting_times": [
+        "10:00-12:00",
+        "14:00-16:00"
+      ]
+    }
+  },
+  "finance_and_banking": {
+    "accounts": [],
+    "transactions_log": [],
+    "budgets": [],
+    "bills_and_subscriptions": [],
+    "investments": [],
+    "financial_goals": [],
+    "contracts_and_agreements": []
+  },
+  "social_and_relationships": {
+    "contacts": [],
+    "family_members": [],
+    "friend_groups": [],
+    "social_events_log": []
+  },
+  "work_and_projects": {
+    "current_job": {
+      "company_name": null,
+      "job_title": null,
+      "start_date": null,
+      "manager_id": null,
+      "team_members_ids": []
+    },
+    "projects": [],
+    "tasks": {
+      "pending": [],
+      "in_progress": [],
+      "completed": [],
+      "priorities": {}
+    },
+    "goals_objectives": [],
+    "notes_and_documents": []
+  },
+  "knowledge_and_learning": {
+    "learned_topics": [],
+    "areas_of_interest": [],
+    "skills": [],
+    "educational_background": [],
+    "online_courses": [],
+    "reading_list": [],
+    "user_preferences_general": {},
+    "important_dates_custom": [],
+    "subscriptions_services": [],
+    "travel_history_and_plans": [],
+    "vehicles_and_transport": []
+  },
+  "devices_and_smart_home": {
+    "devices": [],
+    "smart_home_routines": []
+  },
+  "assistant_memory": {
+    "conversation_history_summary": [],
+    "learned_user_patterns": [],
+    "feedback_log": []
+  }
+}

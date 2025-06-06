@@ -1,0 +1,8 @@
+langchain
+chromadb
+google-api-python-client
+oauth2client
+APScheduler
+pytest
+schedule
+

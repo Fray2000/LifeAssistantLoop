@@ -1,0 +1,11 @@
+{
+  "id": "68699070-eb49-49c7-8567-4d1531fb1c34",
+  "type": "command",
+  "content": {
+    "action": "update_memory",
+    "path": "personal.full_name",
+    "value": "Francesco Le"
+  },
+  "timestamp": "2025-06-05T11:01:32.497641",
+  "response_required": true
+}

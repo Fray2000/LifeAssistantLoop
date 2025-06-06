@@ -1,0 +1,67 @@
+{
+  "messages": [
+    {
+      "type": "user_message",
+      "target": "task_agent",
+      "payload": {
+        "action": "natural_language",
+        "text": "Yello"
+      },
+      "status": "new"
+    },
+    {
+      "type": "user_message",
+      "target": "task_agent",
+      "payload": {
+        "action": "natural_language",
+        "text": "Yi"
+      },
+      "status": "new"
+    },
+    {
+      "type": "user_message",
+      "target": "task_agent",
+      "payload": {
+        "action": "natural_language",
+        "text": "Hello my name is FRancecso"
+      },
+      "status": "new"
+    },
+    {
+      "type": "user_message",
+      "target": "task_agent",
+      "payload": {
+        "action": "natural_language",
+        "text": "HIii"
+      },
+      "status": "new"
+    },
+    {
+      "type": "user_message",
+      "target": "task_agent",
+      "payload": {
+        "action": "natural_language",
+        "text": "remember my name Francesco Leo"
+      },
+      "status": "new"
+    },
+    {
+      "type": "user_message",
+      "target": "task_agent",
+      "payload": {
+        "action": "natural_language",
+        "text": "Yo"
+      },
+      "status": "new"
+    },
+    {
+      "type": "user_message",
+      "target": "task_agent",
+      "payload": {
+        "action": "natural_language",
+        "text": "Hi, remember my height 1m94"
+      },
+      "status": "new"
+    }
+  ]
+}

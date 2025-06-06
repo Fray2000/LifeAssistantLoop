@@ -1,0 +1,31 @@
+{
+  "messages": [
+    {
+      "type": "user_message",
+      "target": "task_agent",
+      "payload": {
+        "action": "natural_language",
+        "text": "Hi, what can i dp"
+      },
+      "status": "done"
+    },
+    {
+      "type": "user_message",
+      "target": "task_agent",
+      "payload": {
+        "action": "natural_language",
+        "text": "& C:/Users/francesc.leo/AppData/Local/Microsoft/WindowsApps/python3.13.exe c:/Users/francesc.leo/Documents/gitlab/LifeAssistant/life_assistant/orchestrator.py"
+      },
+      "status": "done"
+    },
+    {
+      "type": "user_message",
+      "target": "task_agent",
+      "payload": {
+        "action": "natural_language",
+        "text": "Hi , my name is Francesco"
+      },
+      "status": "done"
+    }
+  ]
+}
